@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petal Path</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Petal Path</h1>
+            <div class="controls">
+                <button id="newGameBtn" class="control-btn">
+                    <!-- <span class="icon">↺</span> -->
+                    New Game
+                </button>
+                <button id="revealBtn" class="control-btn">
+                    <!-- <span class="icon">👁</span> -->
+                    Reveal Board
+                </button>
+                <button id="restartBtn" class="control-btn">
+                    <!-- <span class="icon">⟲</span> -->
+                    Restart Attempt
+                </button>
+            </div>
+        </header>
+
+        <div class="game-info">
+            <div id="nextGoal">Next Goal: 1</div>
+        </div>
+
+        <div class="game-layout">
+            <div class="game-board" id="gameBoard">
+                <!-- Game tiles will be generated here by JavaScript -->
+            </div>
+
+            <div class="power-bubbles">
+                <div id="extraLifeBubble" class="power-bubble pink hidden">
+                    <span class="icon">❤️</span>
+                    Extra Life
+                </div>
+                <div id="anyOrderBubble" class="power-bubble teal hidden">
+                    <span class="icon">🔀</span>
+                    Next in Any Order
+                </div>
+                <div id="diagonalBubble" class="power-bubble indigo hidden">
+                    <span class="icon">↗</span>
+                    Diagonal Moves
+                </div>
+                <div id="warpBubble" class="power-bubble cyan hidden">
+                    <span class="icon">➟</span>
+                    Warping
+                </div>
+                <div id="grappleBubble" class="power-bubble purple hidden">
+                    <span class="icon">⚓</span>
+                    Grappling
+                </div>
+            </div>
+        </div>
+
+        <div id="gameMessage" class="game-message">
+            Select a tile on the outer edge to start
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
