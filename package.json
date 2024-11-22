@@ -1,7 +1,7 @@
 {
   "name": "petal-power",
   "version": "0.1.0",
-  "homepage": "https://anthonypinter.github.io/petal-power",
+  "homepage": "https://anthonypinter.com/petal-power",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
