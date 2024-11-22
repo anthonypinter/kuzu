@@ -21,10 +21,10 @@ class TileGame {
 
     initializeBoard() {
         const tiles = [
-            ...Array(6).fill(0),
+            ...Array(5).fill(0),
             1, 2, 3, 4, 5,
             6, 7, 8, 9, 10,
-            ...Array(4).fill(11)
+            ...Array(5).fill(11)
         ];
         
         for (let i = tiles.length - 1; i > 0; i--) {
