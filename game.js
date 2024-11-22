@@ -20,7 +20,6 @@ class TileGame {
     }
 
     initializeBoard() {
-        // Create shuffled array of tiles
         const tiles = [
             ...Array(6).fill(0),
             1, 2, 3, 4, 5,
@@ -28,35 +27,48 @@ class TileGame {
             ...Array(4).fill(11)
         ];
         
-        // Fisher-Yates shuffle
         for (let i = tiles.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
         }
 
-        // Create 4x5 board
         this.board = Array(4).fill().map((_, i) => 
             tiles.slice(i * 5, (i + 1) * 5)
         );
 
+        this.flippedTiles.clear();
+        this.currentPosition = null;
+        this.nextGoalTile = 1;
+        this.canMoveDiagonal = false;
+        this.hasExtraLife = false;
+        this.extraLifeUsed = false;
+        this.canSelectAnyGoal = false;
+        this.collectedGoals.clear();
+        this.isWarping = false;
+        this.isGrappling = false;
+        this.grapplePosition = null;
+        this.isProcessingTurnEnd = false;
+        
         this.renderBoard();
         this.updateGameState();
+        this.setGameMessage('Select a tile on the outer edge to start');
+        this.hideVictoryModal();
     }
 
     getTileColor(value) {
         const colors = {
-            0: '#e5e7eb',  // gray-200
-            1: '#ef4444',  // red-500
-            2: '#f97316',  // orange-500
-            3: '#eab308',  // yellow-500
-            4: '#22c55e',  // green-500
-            5: '#3b82f6',  // blue-500
-            6: '#a855f7',  // purple-500
-            7: '#ec4899',  // pink-500
-            8: '#6366f1',  // indigo-500
-            9: '#14b8a6',  // teal-500
-            10: '#06b6d4', // cyan-500
-            11: '#000000'  // black
+            0: '#e5e7eb',
+            1: '#ef4444',
+            2: '#f97316',
+            3: '#eab308',
+            4: '#22c55e',
+            5: '#3b82f6',
+            6: '#a855f7',
+            7: '#ec4899',
+            8: '#6366f1',
+            9: '#14b8a6',
+            10: '#06b6d4',
+            11: '#000000'
         };
         return colors[value] || '#e5e7eb';
     }
@@ -114,6 +126,23 @@ class TileGame {
         }, 1500);
     }
 
+    showVictoryModal() {
+        const modal = document.getElementById('victoryModal');
+        modal.classList.remove('hidden');
+        this.isProcessingTurnEnd = true;
+        
+        document.getElementById('newGameAfterWin').onclick = () => {
+            this.hideVictoryModal();
+            this.initializeBoard();
+        };
+    }
+
+    hideVictoryModal() {
+        const modal = document.getElementById('victoryModal');
+        modal.classList.add('hidden');
+        this.isProcessingTurnEnd = false;
+    }
+
     handleTileEffect(row, col, tileValue, isGrappleEffect = false) {
         if (tileValue >= 1 && tileValue <= 5) {
             if (this.canSelectAnyGoal || tileValue === this.nextGoalTile) {
@@ -135,7 +164,7 @@ class TileGame {
                 
                 if (this.collectedGoals.size === 5) {
                     setTimeout(() => {
-                        this.handleTurnEnd('Sequence completed! Well done!', true);
+                        this.showVictoryModal();
                     }, 500);
                     return true;
                 }
@@ -242,18 +271,15 @@ class TileGame {
     }
 
     updateGameState() {
-        // Update next goal display
         document.getElementById('nextGoal').textContent = 
             `Next Goal: ${this.nextGoalTile <= 5 ? this.nextGoalTile : 'Complete!'}`;
 
-        // Update power bubbles
         document.getElementById('extraLifeBubble').classList.toggle('hidden', !this.hasExtraLife);
         document.getElementById('anyOrderBubble').classList.toggle('hidden', !this.canSelectAnyGoal);
         document.getElementById('diagonalBubble').classList.toggle('hidden', !this.canMoveDiagonal);
         document.getElementById('warpBubble').classList.toggle('hidden', !this.isWarping);
         document.getElementById('grappleBubble').classList.toggle('hidden', !this.isGrappling);
 
-        // Update button states
         const buttons = document.querySelectorAll('.control-btn');
         buttons.forEach(button => {
             button.disabled = this.isProcessingTurnEnd;
@@ -297,7 +323,7 @@ class TileGame {
         document.getElementById('revealBtn').onclick = () => {
             this.showAllTiles = !this.showAllTiles;
             const button = document.getElementById('revealBtn');
-            button.innerHTML = `<span class="icon">${this.showAllTiles ? '👁‍🗨' : '👁'}</span>
+            button.innerHTML = `
                               ${this.showAllTiles ? 'Hide Tiles' : 'Reveal Board'}`;
             this.renderBoard();
         };
@@ -308,7 +334,6 @@ class TileGame {
     }
 }
 
-// Initialize game when page loads
 document.addEventListener('DOMContentLoaded', () => {
     new TileGame();
 });
