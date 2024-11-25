@@ -14,6 +14,7 @@ class TileGame {
         this.isWarping = false;
         this.isGrappling = false;
         this.grapplePosition = null;
+        this.gameWon = false;
 
         this.initializeBoard();
         this.setupEventListeners();
@@ -21,10 +22,10 @@ class TileGame {
 
     initializeBoard() {
         const tiles = [
-            ...Array(5).fill(0),
+            ...Array(6).fill(0),
             1, 2, 3, 4, 5,
             6, 7, 8, 9, 10,
-            ...Array(5).fill(11)
+            ...Array(4).fill(11)
         ];
         
         for (let i = tiles.length - 1; i > 0; i--) {
@@ -48,11 +49,13 @@ class TileGame {
         this.isGrappling = false;
         this.grapplePosition = null;
         this.isProcessingTurnEnd = false;
+        this.gameWon = false;
         
         this.renderBoard();
         this.updateGameState();
         this.setGameMessage('Select a tile on the outer edge to start');
         this.hideVictoryModal();
+        this.hideHelpModal();
     }
 
     getTileColor(value) {
@@ -74,7 +77,8 @@ class TileGame {
     }
 
     isValidMove(row, col) {
-        if (this.isProcessingTurnEnd) return false;
+        if (this.isProcessingTurnEnd || this.gameWon) return false;
+        
         
         if (this.isWarping || this.isGrappling) {
             return !this.flippedTiles.has(`${row}-${col}`);
@@ -104,11 +108,13 @@ class TileGame {
         this.isProcessingTurnEnd = true;
         this.setGameMessage(message);
         
+        // Immediately clear the current position to remove highlighting
+        this.currentPosition = null;
+        this.renderBoard();
+        
         setTimeout(() => {
             if (shouldResetBoard) {
                 this.flippedTiles.clear();
-                this.currentPosition = null;
-                this.collectedGoals.clear();
             }
             this.canMoveDiagonal = false;
             this.canSelectAnyGoal = false;
@@ -131,6 +137,16 @@ class TileGame {
         modal.classList.remove('hidden');
         this.isProcessingTurnEnd = true;
         
+        document.getElementById('revealBoardAfterWin').onclick = () => {
+            this.hideVictoryModal();
+            this.showAllTiles = true;
+            this.isProcessingTurnEnd = false;
+            // Update the Reveal Board button text
+            const revealButton = document.getElementById('revealBtn');
+            revealButton.innerHTML = `Hide Board`;
+            this.renderBoard();
+        };
+        
         document.getElementById('newGameAfterWin').onclick = () => {
             this.hideVictoryModal();
             this.initializeBoard();
@@ -141,6 +157,16 @@ class TileGame {
         const modal = document.getElementById('victoryModal');
         modal.classList.add('hidden');
         this.isProcessingTurnEnd = false;
+    }
+
+    showHelpModal() {
+        const modal = document.getElementById('helpModal');
+        modal.classList.remove('hidden');
+    }
+
+    hideHelpModal() {
+        const modal = document.getElementById('helpModal');
+        modal.classList.add('hidden');
     }
 
     handleTileEffect(row, col, tileValue, isGrappleEffect = false) {
@@ -324,12 +350,26 @@ class TileGame {
             this.showAllTiles = !this.showAllTiles;
             const button = document.getElementById('revealBtn');
             button.innerHTML = `
-                              ${this.showAllTiles ? 'Hide Tiles' : 'Reveal Board'}`;
+                              ${this.showAllTiles ? 'Hide Board' : 'Reveal Board'}`;
             this.renderBoard();
         };
         
         document.getElementById('restartBtn').onclick = () => {
             this.handleTurnEnd('Starting new attempt...', true);
+        };
+
+        document.getElementById('helpBtn').onclick = () => {
+            this.showHelpModal();
+        };
+
+        document.getElementById('closeHelpBtn').onclick = () => {
+            this.hideHelpModal();
+        };
+
+        document.getElementById('helpModal').onclick = (e) => {
+            if (e.target.id === 'helpModal') {
+                this.hideHelpModal();
+            }
         };
     }
 }

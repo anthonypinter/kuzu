@@ -23,6 +23,10 @@
                     <!-- <span class="icon">⟲</span> -->
                     Restart Attempt
                 </button>
+                <button id="helpBtn" class="control-btn">
+                    <!-- <span class="icon">?</span> -->
+                    Help
+                </button>
             </div>
         </header>
 
@@ -65,11 +69,80 @@
 
         <div id="victoryModal" class="modal hidden">
             <div class="modal-content">
-                <h2>🎉 Congratulations! 🎉</h2>
-                <p>You've completed the sequence!</p>
-                <button id="newGameAfterWin" class="control-btn">Play Again</button>
+                <div class="modal-header">
+                    <h2 style="text-align: center;">🎉 Congratulations! 🎉</h2>
+                </div>
+                <div class="modal-body">
+                    <p style="text-align: center;">You've completed the sequence!</p>
+                </div>
+                <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
+                    <button id="revealBoardAfterWin" class="control-btn">Reveal Full Board</button>
+                    <button id="newGameAfterWin" class="control-btn">New Game</button>
+                </div>
             </div>
         </div>
+
+        
+
+        <div id="helpModal" class="modal hidden">
+            <div class="modal-content">
+                <div style="text-align: center;" class="modal-header">
+                    <h2 style="text-align: center;">How to Play</h2>
+                </div>
+                <div class="modal-body">
+                    <div class="help-content">
+                        <div class="tile-group">
+                            <h3>Goal Tiles</h3>
+                            <div class="tiles-row">
+                                <div class="tile-explanation">
+                                    <div class="tile" style="background-color: #ef4444">1</div>
+                                    <div class="tile" style="background-color: #f97316">2</div>
+                                    <div class="tile" style="background-color: #eab308">3</div>
+                                    <div class="tile" style="background-color: #22c55e">4</div>
+                                    <div class="tile" style="background-color: #3b82f6">5</div>
+                                </div>
+                                <p>Must be collected in order (1→2→3→4→5) unless you have the "any order" power</p>
+                            </div>
+                        </div>
+                        <h3>Power Tiles</h3>
+                        <div class="two-column-grid">
+                            
+                            <div class="tile-explanation">
+                                <div class="tile" style="background-color: #e5e7eb">0</div>
+                                <p>Traversable - Can move through multiple times</p>
+                            </div>
+                            <div class="tile-explanation">
+                                <div class="tile" style="background-color: #a855f7">6</div>
+                                <p>Grapple - Reveal any tile while staying in place</p>
+                            </div>
+                            <div class="tile-explanation">
+                                <div class="tile" style="background-color: #ec4899">7</div>
+                                <p>Extra Life - Survive one death tile (refills with next goal)</p>
+                            </div>
+                            <div class="tile-explanation">
+                                <div class="tile" style="background-color: #6366f1">8</div>
+                                <p>Diagonal - Enable diagonal movement</p>
+                            </div>
+                            <div class="tile-explanation">
+                                <div class="tile" style="background-color: #14b8a6">9</div>
+                                <p>Out of Order - Collect next goal in any order</p>
+                            </div>
+                            <div class="tile-explanation">
+                                <div class="tile" style="background-color: #06b6d4">10</div>
+                                <p>Warp - Move to and reveal any tile</p>
+                            </div>
+                            <div class="tile-explanation">
+                                <div class="tile" style="background-color: #000000; color: white">11</div>
+                                <p>Death - Ends attempt unless you have extra life</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; justify-content: center;">
+                    <button id="closeHelpBtn" class="control-btn">Close</button>
+                </div>
+            </div>
+         </div>
     </div>
     <script src="game.js"></script>
 </body>
