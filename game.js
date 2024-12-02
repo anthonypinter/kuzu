@@ -67,19 +67,19 @@ class TileGame {
 
     getTileImage(value) {
         const images = {
-            unflipped: '/src/unflipped.svg',
-            0: '/src/walkthrough.svg',
-            1: '/src/flower1.svg',
-            2: '/src/flower2.svg',
-            3: '/src/flower3.svg',
-            4: '/src/flower4.svg',
-            5: '/src/flower5.svg',
-            6: '/src/grapple.svg',
-            7: '/src/extralife.svg',
-            8: '/src/diagonal.svg',
-            9: '/src/ooflower.svg',
-            10: '/src/warp.svg',
-            11: '/src/death.svg'
+            unflipped: './src/unflipped.svg',
+            0: './src/walkthrough.svg',
+            1: './src/flower1.svg',
+            2: './src/flower2.svg',
+            3: './src/flower3.svg',
+            4: './src/flower4.svg',
+            5: './src/flower5.svg',
+            6: './src/grapple.svg',
+            7: './src/extralife.svg',
+            8: './src/diagonal.svg',
+            9: './src/ooflower.svg',
+            10: './src/warp.svg',
+            11: './src/death.svg'
         };
         return images[value] || images.unflipped;
     }
