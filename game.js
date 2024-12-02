@@ -1,3 +1,8 @@
+const tileImage = document.createElement('img');
+tileImage.className = 'tile-image';
+tileImage.draggable = false; // Prevents drag behavior
+tileImage.loading = 'eager'; // Ensures immediate loading for game pieces
+
 class TileGame {
     constructor() {
         this.board = [];
@@ -60,22 +65,23 @@ class TileGame {
         this.hideHelpModal();
     }
 
-    getTileColor(value) {
-        const colors = {
-            0: '#e5e7eb',
-            1: '#ef4444',
-            2: '#f97316',
-            3: '#eab308',
-            4: '#22c55e',
-            5: '#3b82f6',
-            6: '#a855f7',
-            7: '#ec4899',
-            8: '#6366f1',
-            9: '#14b8a6',
-            10: '#06b6d4',
-            11: '#000000'
+    getTileImage(value) {
+        const images = {
+            unflipped: '/src/unflipped.svg',
+            0: '/src/walkthrough.svg',
+            1: '/src/flower1.svg',
+            2: '/src/flower2.svg',
+            3: '/src/flower3.svg',
+            4: '/src/flower4.svg',
+            5: '/src/flower5.svg',
+            6: '/src/grapple.svg',
+            7: '/src/extralife.svg',
+            8: '/src/diagonal.svg',
+            9: '/src/ooflower.svg',
+            10: '/src/warp.svg',
+            11: '/src/death.svg'
         };
-        return colors[value] || '#e5e7eb';
+        return images[value] || images.unflipped;
     }
 
     isValidMove(row, col) {
@@ -372,33 +378,70 @@ class TileGame {
     renderBoard() {
         const gameBoard = document.getElementById('gameBoard');
         gameBoard.innerHTML = '';
-
+    
         this.board.forEach((row, rowIndex) => {
             row.forEach((tile, colIndex) => {
                 const tileElement = document.createElement('button');
                 tileElement.className = 'tile';
                 
+                // Create image element
+                const tileImage = document.createElement('img');
+                tileImage.className = 'tile-image';
+                
                 if (this.flippedTiles.has(`${rowIndex}-${colIndex}`) || this.showAllTiles) {
-                    tileElement.classList.add('revealed');
-                    tileElement.style.backgroundColor = this.getTileColor(tile);
-                    tileElement.textContent = tile;
+                    tileImage.src = this.getTileImage(tile);
+                } else {
+                    tileImage.src = this.getTileImage('unflipped');
                 }
-
+                
+                tileElement.appendChild(tileImage);
+    
                 if (this.isValidMove(rowIndex, colIndex) && !this.isProcessingTurnEnd) {
                     tileElement.classList.add('valid-move');
                 }
-
+    
                 if (this.currentPosition && 
                     this.currentPosition[0] === rowIndex && 
                     this.currentPosition[1] === colIndex) {
                     tileElement.classList.add('current');
                 }
-
+    
                 tileElement.onclick = () => this.handleTileClick(rowIndex, colIndex);
                 gameBoard.appendChild(tileElement);
             });
         });
     }
+
+    // renderBoard() {
+    //     const gameBoard = document.getElementById('gameBoard');
+    //     gameBoard.innerHTML = '';
+
+    //     this.board.forEach((row, rowIndex) => {
+    //         row.forEach((tile, colIndex) => {
+    //             const tileElement = document.createElement('button');
+    //             tileElement.className = 'tile';
+                
+    //             if (this.flippedTiles.has(`${rowIndex}-${colIndex}`) || this.showAllTiles) {
+    //                 tileElement.classList.add('revealed');
+    //                 tileElement.style.backgroundColor = this.getTileColor(tile);
+    //                 tileElement.textContent = tile;
+    //             }
+
+    //             if (this.isValidMove(rowIndex, colIndex) && !this.isProcessingTurnEnd) {
+    //                 tileElement.classList.add('valid-move');
+    //             }
+
+    //             if (this.currentPosition && 
+    //                 this.currentPosition[0] === rowIndex && 
+    //                 this.currentPosition[1] === colIndex) {
+    //                 tileElement.classList.add('current');
+    //             }
+
+    //             tileElement.onclick = () => this.handleTileClick(rowIndex, colIndex);
+    //             gameBoard.appendChild(tileElement);
+    //         });
+    //     });
+    // }
 
     setupEventListeners() {
         document.getElementById('newGameBtn').onclick = () => this.initializeBoard();
