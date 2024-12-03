@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div class="holder">
     <div class="container">
         <header>
             <h1>Petal Path</h1>
@@ -32,11 +33,16 @@
 
         <div class="game-info">
             <div id="nextGoal">Next Goal: 1</div>
+            <div id="attemptCounter">Attempt: 1</div>
         </div>
 
         <div class="game-layout">
             <div class="game-board" id="gameBoard">
                 <!-- Game tiles will be generated here by JavaScript -->
+            </div>
+
+            <div id="gameMessage" class="game-message">
+                Select a tile on the outer edge to start
             </div>
 
             <div class="power-bubbles">
@@ -63,9 +69,7 @@
             </div>
         </div>
 
-        <div id="gameMessage" class="game-message">
-            Select a tile on the outer edge to start
-        </div>
+        
 
         <div id="victoryModal" class="modal hidden">
             <div class="modal-content">
@@ -74,6 +78,7 @@
                 </div>
                 <div class="modal-body">
                     <p style="text-align: center;">You've completed the sequence!</p>
+                    <p style="text-align: center;">Number of attempts: <span id="finalTryCount"></span></p>
                 </div>
                 <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
                     <button id="closeVictoryBtn" class="control-btn">Close</button>
@@ -97,11 +102,11 @@
                             <div class="tiles-row">
                                 <div class="tile-explanation">
                                     <div class="help-tile">
-                                        <img style="height: 96px; width: 96px" src="./src/flower1.svg" alt="1" class="tile-image">
-                                        <img style="height: 96px; width: 96px" src="./src/flower2.svg" alt="2" class="tile-image">
-                                        <img style="height: 96px; width: 96px" src="./src/flower3.svg" alt="3" class="tile-image">
-                                        <img style="height: 96px; width: 96px" src="./src/flower4.svg" alt="4" class="tile-image">
-                                        <img style="height: 96px; width: 96px" src="./src/flower5.svg" alt="5" class="tile-image">
+                                        <img style="height: 72px; width: 72px" src="./src/flower1.svg" alt="1" class="tile-image">
+                                        <img style="height: 72px; width: 72px" src="./src/flower2.svg" alt="2" class="tile-image">
+                                        <img style="height: 72px; width: 72px" src="./src/flower3.svg" alt="3" class="tile-image">
+                                        <img style="height: 72px; width: 72px" src="./src/flower4.svg" alt="4" class="tile-image">
+                                        <img style="height: 72px; width: 72px" src="./src/flower5.svg" alt="5" class="tile-image">
                                     </div>
                                     <!-- <div class="tile" style="background-color: #ef4444">1</div>
                                     <div class="tile" style="background-color: #f97316">2</div>
@@ -116,31 +121,31 @@
                         <div class="two-column-grid">
                             
                             <div class="tile-explanation">
-                                <img style="height: 96px; width: 96px" src="./src/walkthrough.svg" alt="0" class="tile-image">
+                                <img style="height: 72px; width: 72px" src="./src/walkthrough.svg" alt="0" class="tile-image">
                                 <p>Traversable - Can move through multiple times</p>
                             </div>
                             <div class="tile-explanation">
-                                <img style="height: 96px; width: 96px" src="./src/grapple.svg" alt="6" class="tile-image">
+                                <img style="height: 72px; width: 72px" src="./src/grapple.svg" alt="6" class="tile-image">
                                 <p>Grapple - Reveal any tile while staying in place</p>
                             </div>
                             <div class="tile-explanation">
-                                <img style="height: 96px; width: 96px" src="./src/extralife.svg" alt="7" class="tile-image">
+                                <img style="height: 72px; width: 72px" src="./src/extralife.svg" alt="7" class="tile-image">
                                 <p>Extra Life - Survive one death tile (refills with next goal)</p>
                             </div>
                             <div class="tile-explanation">
-                                <img style="height: 96px; width: 96px" src="./src/diagonal.svg" alt="8" class="tile-image">
+                                <img style="height: 72px; width: 72px" src="./src/diagonal.svg" alt="8" class="tile-image">
                                 <p>Diagonal - Enable diagonal movement</p>
                             </div>
                             <div class="tile-explanation">
-                                <img style="height: 96px; width: 96px" src="./src/ooflower.svg" alt="9" class="tile-image">
+                                <img style="height: 72px; width: 72px" src="./src/ooflower.svg" alt="9" class="tile-image">
                                 <p>Out of Order - Collect next goal in any order</p>
                             </div>
                             <div class="tile-explanation">
-                                <img style="height: 96px; width: 96px" src="./src/warp.svg" alt="10" class="tile-image">
+                                <img style="height: 72px; width: 72px" src="./src/warp.svg" alt="10" class="tile-image">
                                 <p>Warp - Move to and reveal any tile</p>
                             </div>
                             <div class="tile-explanation">
-                                <img style="height: 96px; width: 96px" src="./src/death.svg" alt="11" class="tile-image">
+                                <img style="height: 72px; width: 72px" src="./src/death.svg" alt="11" class="tile-image">
                                 <p>Death - Ends attempt unless you have extra life</p>
                             </div>
                         </div>
@@ -152,6 +157,7 @@
             </div>
          </div>
     </div>
+</div>
     <script src="game.js"></script>
 </body>
 </html>

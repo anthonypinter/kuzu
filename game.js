@@ -19,12 +19,15 @@ class TileGame {
         this.isWarping = false;
         this.isGrappling = false;
         this.grapplePosition = null;
+        this.tryCount = 1;
 
         this.initializeBoard();
         this.setupEventListeners();
     }
 
     initializeBoard() {
+        this.tryCount = 1;
+
         const tiles = [
             ...Array(6).fill(0),
             1, 2, 3, 4, 5,
@@ -151,6 +154,7 @@ class TileGame {
                 this.grapplePosition = null;
                 this.nextGoalTile = 1;
                 this.showAllTiles = false;
+                this.tryCount++;
                 const revealButton = document.getElementById('revealBtn');
                 revealButton.innerHTML = `Reveal Board`;
             }
@@ -165,6 +169,8 @@ class TileGame {
         const modal = document.getElementById('victoryModal');
         modal.classList.remove('hidden');
         this.isProcessingTurnEnd = true;
+
+        document.getElementById('finalTryCount').textContent = this.tryCount;
         
         document.getElementById('closeVictoryBtn').onclick = () => {
             this.hideVictoryModal();
@@ -290,14 +296,14 @@ class TileGame {
         return false;
      }
 
-    handleTileClick(row, col) {
+     handleTileClick(row, col) {
         if (!this.isValidMove(row, col)) {
             return;
         }
-
+     
         const tileValue = this.board[row][col];
         this.flippedTiles.add(`${row}-${col}`);
-
+     
         if (this.isWarping) {
             this.isWarping = false;
             this.currentPosition = [row, col];
@@ -309,7 +315,7 @@ class TileGame {
             this.renderBoard();
             return;
         }
-
+     
         if (this.isGrappling) {
             const [currentRow, currentCol] = this.currentPosition;
             const isAdjacent = 
@@ -318,33 +324,34 @@ class TileGame {
                 (this.canMoveDiagonal && 
                  Math.abs(row - currentRow) === 1 && 
                  Math.abs(col - currentCol) === 1);
-    
+     
             if (isAdjacent) {
-                // Treat as normal move
+                // Handle normal move from grapple tile
                 this.isGrappling = false;
+                this.grapplePosition = null;
                 this.currentPosition = [row, col];
                 this.handleTileEffect(row, col, tileValue);
-                this.updateGameState();
-                this.renderBoard();
-                return;
-            }
-    
-            // Otherwise handle as grapple
-            const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
-            if (!shouldEnd) {
-                this.currentPosition = this.grapplePosition;
-                this.setGameMessage(`Revealed tile ${tileValue}!`);
+            } else {
+                // Handle grapple effect
+                const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
+                if (!shouldEnd) {
+                    this.currentPosition = this.grapplePosition;
+                    this.setGameMessage(`Revealed tile ${tileValue}!`);
+                }
+                // Only reset grapple state after successful use
+                this.isGrappling = false;
+                this.grapplePosition = null;
             }
             this.updateGameState();
             this.renderBoard();
             return;
         }
-
+     
         this.currentPosition = [row, col];
         this.handleTileEffect(row, col, tileValue);
         this.updateGameState();
         this.renderBoard();
-    }
+     }
 
     getNextRequiredGoal() {
         for (let i = 1; i <= 5; i++) {
@@ -362,13 +369,15 @@ class TileGame {
     updateGameState() {
         document.getElementById('nextGoal').textContent = 
             `Next Goal: ${this.nextGoalTile <= 5 ? this.nextGoalTile : 'Complete!'}`;
-
+        document.getElementById('attemptCounter').textContent = 
+            `Attempt: ${this.tryCount}`;
+    
         document.getElementById('extraLifeBubble').classList.toggle('hidden', !this.hasExtraLife);
         document.getElementById('anyOrderBubble').classList.toggle('hidden', !this.canSelectAnyGoal);
         document.getElementById('diagonalBubble').classList.toggle('hidden', !this.canMoveDiagonal);
         document.getElementById('warpBubble').classList.toggle('hidden', !this.isWarping);
         document.getElementById('grappleBubble').classList.toggle('hidden', !this.isGrappling);
-
+    
         const buttons = document.querySelectorAll('.control-btn');
         buttons.forEach(button => {
             button.disabled = this.isProcessingTurnEnd;
