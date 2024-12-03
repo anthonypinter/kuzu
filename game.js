@@ -63,7 +63,7 @@ class TileGame {
         
         this.renderBoard();
         this.updateGameState();
-        this.setGameMessage('Select a tile on the outer edge to start');
+        //this.setGameMessage('Select a tile on the outer edge to start');
         this.hideVictoryModal();
         this.hideHelpModal();
     }
@@ -136,7 +136,7 @@ class TileGame {
 
     handleTurnEnd(message, shouldResetBoard = false) {
         this.isProcessingTurnEnd = true;
-        this.setGameMessage(message);
+        //this.setGameMessage(message);
         
         this.currentPosition = null;
         this.renderBoard();
@@ -159,7 +159,7 @@ class TileGame {
                 revealButton.innerHTML = `Reveal Board`;
             }
             this.isProcessingTurnEnd = false;
-            this.setGameMessage('Select a tile on the outer edge to start');
+            //this.setGameMessage('Select a tile on the outer edge to start');
             this.updateGameState();
             this.renderBoard();
         }, 1500);
@@ -217,9 +217,9 @@ class TileGame {
                 if (this.extraLifeUsed) {
                     this.hasExtraLife = true;
                     this.extraLifeUsed = false;
-                    this.setGameMessage(`Found tile ${tileValue}! Extra life refilled!`);
+                    //this.setGameMessage(`Found tile ${tileValue}! Extra life refilled!`);
                 } else {
-                    this.setGameMessage(`Found tile ${tileValue}!`);
+                    //this.setGameMessage(`Found tile ${tileValue}!`);
                 }
      
                 if (this.canSelectAnyGoal) {
@@ -250,7 +250,7 @@ class TileGame {
         if (tileValue === 6 && !isGrappleEffect) {
             this.isGrappling = true;
             this.grapplePosition = [row, col];
-            this.setGameMessage('Select any unflipped tile to reveal, or move normally');
+            //this.setGameMessage('Select any unflipped tile to reveal, or move normally');
             return false;
         }
      
@@ -258,27 +258,27 @@ class TileGame {
             case 7:
                 this.hasExtraLife = true;
                 this.extraLifeUsed = false;
-                this.setGameMessage('Extra life gained!');
+                //this.setGameMessage('Extra life gained!');
                 break;
      
             case 8:
                 this.canMoveDiagonal = true;
-                this.setGameMessage('Diagonal movement enabled!');
+                //this.setGameMessage('Diagonal movement enabled!');
                 break;
      
             case 9:
                 this.canSelectAnyGoal = true;
-                this.setGameMessage('You can select your next goal tile in any order!');
+                //this.setGameMessage('You can select your next goal tile in any order!');
                 break;
      
             case 10:
                 if (!isGrappleEffect) {
                     this.isWarping = true;
-                    this.setGameMessage('Select any unflipped tile to warp to');
+                    //this.setGameMessage('Select any unflipped tile to warp to');
                 } else {
                     this.isGrappling = false;
                     this.isWarping = true;
-                    this.setGameMessage('You found a warp tile! Select any unflipped tile to warp to');
+                    //this.setGameMessage('You found a warp tile! Select any unflipped tile to warp to');
                 }
                 break;
      
@@ -286,7 +286,7 @@ class TileGame {
                 if (this.hasExtraLife) {
                     this.hasExtraLife = false;
                     this.extraLifeUsed = true;
-                    this.setGameMessage('Extra life used!');
+                    //this.setGameMessage('Extra life used!');
                 } else {
                     this.handleTurnEnd('Death tile! Starting new attempt...', true);
                     return true;
@@ -309,7 +309,7 @@ class TileGame {
             this.currentPosition = [row, col];
             const shouldEnd = this.handleTileEffect(row, col, tileValue);
             if (!shouldEnd) {
-                this.setGameMessage(`Warped to tile ${tileValue}!`);
+                //this.setGameMessage(`Warped to tile ${tileValue}!`);
             }
             this.updateGameState();
             this.renderBoard();
@@ -336,7 +336,7 @@ class TileGame {
                 const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
                 if (!shouldEnd) {
                     this.currentPosition = this.grapplePosition;
-                    this.setGameMessage(`Revealed tile ${tileValue}!`);
+                    //this.setGameMessage(`Revealed tile ${tileValue}!`);
                 }
                 // Only reset grapple state after successful use
                 this.isGrappling = false;
@@ -362,9 +362,9 @@ class TileGame {
         return 5;
     }
 
-    setGameMessage(message) {
-        document.getElementById('gameMessage').textContent = message;
-    }
+    // setGameMessage(message) {
+    //     document.getElementById('gameMessage').textContent = message;
+    // }
 
     updateGameState() {
         document.getElementById('nextGoal').textContent = 
