@@ -142,6 +142,16 @@ h1 {
     justify-content: center;
 }
 
+@media (max-width: 400px) {
+    .game-board {
+        display: grid;
+        grid-template-columns: repeat(4, var(--tile-size));
+        grid-template-rows: repeat(5, var(--tile-size));
+        gap: var(--gap-size);
+        justify-content: center;
+    }
+}
+
 /* this is where we might move the mobile version to 5 row 4 column... */
 
 .tile {
