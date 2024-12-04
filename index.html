@@ -7,29 +7,36 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <header>
+        <h1>Petal Path</h1>
+        <div class="controls">
+            <!-- <button id="newGameBtn" class="control-btn">
+                <span class="icon">↺</span>
+                New Game
+            </button>
+            <button id="revealBtn" class="control-btn">
+                <span class="icon">👁</span>
+                Reveal Board
+            </button>-->
+            <button id="helpBtn" class="control-btn">
+                <span class="icon">?</span>
+            </button>
+        </div>
+    </header>
+    <div class="controls">
+        <button id="newGameBtn" class="control-btn">
+            <!-- <span class="icon">↺</span> -->
+            New Game
+        </button>
+        <button id="revealBtn" class="control-btn">
+            <!-- <span class="icon">👁</span> -->
+            Reveal Board
+        </button>
+      
+    </div>
     <div class="holder">
     <div class="container">
-        <header>
-            <h1>Petal Path</h1>
-            <div class="controls">
-                <button id="newGameBtn" class="control-btn">
-                    <!-- <span class="icon">↺</span> -->
-                    New Game
-                </button>
-                <button id="revealBtn" class="control-btn">
-                    <!-- <span class="icon">👁</span> -->
-                    Reveal Board
-                </button>
-                <button id="restartBtn" class="control-btn">
-                    <!-- <span class="icon">⟲</span> -->
-                    Restart Attempt
-                </button>
-                <button id="helpBtn" class="control-btn">
-                    <!-- <span class="icon">?</span> -->
-                    Help
-                </button>
-            </div>
-        </header>
+       
 
         <div class="game-info">
             <div id="nextGoal">Next Goal: 1</div>
@@ -39,6 +46,13 @@
         <div class="game-layout">
             <div class="game-board" id="gameBoard">
                 <!-- Game tiles will be generated here by JavaScript -->
+            </div>
+
+            <div class="controls">
+                <button id="restartBtn" class="control-btn">
+                    <!-- <span class="icon">⟲</span> -->
+                    Restart Attempt
+                </button>
             </div>
 
             <!-- <div id="gameMessage" class="game-message">

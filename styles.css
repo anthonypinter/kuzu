@@ -25,6 +25,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-direction: column;
     height: 100vh;
     padding: 1rem;
 }
@@ -52,9 +53,13 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    flex-direction: column;
+    margin-bottom: 2rem;
+    /* margin-top: 1.5rem; */
+    flex-direction: row;
     gap: 1rem;
+    border-bottom: 1px solid gray;
+    width: 100vw;
+    padding: 0 5rem 0 5rem;
 }
 
 @media (min-width: 640px) {
@@ -81,11 +86,13 @@ header {
 #nextGoal, #attemptCounter {
     font-size: clamp(0.75rem, 2vw, 0.875rem);
     color: #374151;
+    display: none;
 }
 
 .controls {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: center;
     gap: 0.5rem;
 }
 
