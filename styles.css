@@ -154,8 +154,8 @@ h1 {
     /* --tile-size: clamp(48px, 10vw, 72px); */
 
     .tile {
-        width: 12vw;
-        height: 12vh; 
+        width: 15vw;
+        height: 15vh; 
     }
 }
 
