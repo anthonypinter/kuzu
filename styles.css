@@ -150,6 +150,13 @@ h1 {
         gap: var(--gap-size);
         justify-content: center;
     }
+
+    /* --tile-size: clamp(48px, 10vw, 72px); */
+
+    .tile {
+        width: 12vw;
+        height: 12vh; 
+    }
 }
 
 /* this is where we might move the mobile version to 5 row 4 column... */
