@@ -31,13 +31,14 @@ body {
 }
 
 .container {
-    max-width: 1000px;
+    width: fit-content;
     margin: 0.5rem auto;
     padding: 1rem;
     background: white;
     border-radius: 0.75rem;
     box-shadow: 0 5px 5px rgba(0, 0, 0, 0.25);
-    width: 100%;
+    /* Calculate max width based on game board size plus padding */
+    max-width: min(calc(5 * var(--tile-size) + 4 * var(--gap-size) + 4rem), 95vw);
 }
 
 .holder {
@@ -45,7 +46,8 @@ body {
     display: flex;
     flex-direction: column;
     margin: 0.5rem;
-    width: 100%;
+    width: fit-content;
+    max-width: 95vw;
 }
 
 header {
@@ -56,12 +58,14 @@ header {
     flex-direction: row;
     gap: 1rem;
     border-bottom: 1px solid gray;
-    width: 100%;
+    width: 100vw;
     padding: 0.5rem 1rem;
     position: sticky;
     top: 0;
     background: white;
     z-index: 10;
+    max-width: 100vw;
+    box-sizing: border-box;
 }
 
 h1 { 
