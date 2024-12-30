@@ -433,6 +433,11 @@ h3 {
     .control-btn {
         padding: 0.25rem 0.75rem;
         font-size: 0.75rem;
+        min-width: 44px;
+    }
+
+    #helpBtn {
+        width: 60px;
     }
 
     .modal {
