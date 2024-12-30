@@ -298,7 +298,8 @@ h3 {
     margin-bottom: 0.75rem;
     color: #374151;
     font-size: clamp(0.875rem, 2vw, 1rem);
-    text-align: left;
+    text-align: center;
+    width: 100%;
 }
 
 .tiles-row {
@@ -315,12 +316,14 @@ h3 {
 .tiles-row .tile-explanation {
     display: flex;
     gap: 0.5rem;
-    margin: 0;
+    margin: 0 auto;
     padding: 0;
     background: none;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
     width: 100%;
+    max-width: 90%;
     box-sizing: border-box;
 }
 
@@ -334,7 +337,7 @@ h3 {
 
 .tile-explanation {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
@@ -342,6 +345,7 @@ h3 {
     flex-direction: column;
     width: 100%;
     box-sizing: border-box;
+    text-align: center;
 }
 
 .tile-explanation .tile {
@@ -358,8 +362,10 @@ h3 {
 }
 
 .tile-explanation p {
-    margin: 0;
+    margin: 0 auto;
     line-height: 1.3;
+    text-align: center;
+    max-width: 90%;
 }
 
 .help-tile {
@@ -367,7 +373,9 @@ h3 {
     flex-wrap: wrap;
     gap: 0.5rem;
     justify-content: center;
+    align-items: center;
     width: 100%;
+    margin: 0 auto;
 }
 
 .help-tile img {
