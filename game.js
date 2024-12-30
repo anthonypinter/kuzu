@@ -114,8 +114,15 @@ class TileGame {
             return !this.flippedTiles.has(`${row}-${col}`);
         }
 
+        // Check if it's the first move
         if (this.currentPosition === null) {
-            return row === 0 || row === 3 || col === 0 || col === 4;
+            // Check if we're on mobile (4 columns x 5 rows layout)
+            if (window.innerWidth <= 480) {
+                return row === 0 || row === 4 || col === 0 || col === 3;
+            } else {
+                // Desktop layout (5 columns x 4 rows)
+                return row === 0 || row === 3 || col === 0 || col === 4;
+            }
         }
 
         const [currentRow, currentCol] = this.currentPosition;
