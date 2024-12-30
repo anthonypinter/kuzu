@@ -38,8 +38,7 @@ body {
 .container {
     width: fit-content;
     margin: 0;
-    padding: 1rem 0.5rem;
-    margin: 1rem 0rem;
+    padding: 0.5rem;
     background: white;
     border-radius: 0.75rem;
     box-shadow: 0 5px 5px rgba(0, 0, 0, 0.25);
@@ -443,7 +442,7 @@ h3 {
 
 @media (max-width: 480px) {
     :root {
-        --tile-size: clamp(48px, 18vw, 64px);
+        --tile-size: clamp(54px, 22vw, 80px);
     }
 
     .container {
@@ -451,7 +450,9 @@ h3 {
     }
 
     .game-board {
-        width: 95vw;
+        width: 90vw;
+        grid-template-columns: repeat(4, minmax(auto, var(--tile-size)));
+        grid-template-rows: repeat(5, minmax(auto, var(--tile-size)));
     }
 
     .power-bubbles {
