@@ -20,10 +20,21 @@ class TileGame {
         this.isGrappling = false;
         this.grapplePosition = null;
         this.tryCount = 1;
-
+        this.isMobile = window.innerWidth <= 480;
+    
         this.initializeBoard();
         this.setupEventListeners();
+        
+        // Add resize listener to handle orientation changes
+        window.addEventListener('resize', () => {
+            const wasMobile = this.isMobile;
+            this.isMobile = window.innerWidth <= 480;
+            if (wasMobile !== this.isMobile) {
+                this.initializeBoard();
+            }
+        });
     }
+
 
     initializeBoard() {
         this.tryCount = 1;
@@ -40,9 +51,17 @@ class TileGame {
             [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
         }
 
-        this.board = Array(4).fill().map((_, i) => 
-            tiles.slice(i * 5, (i + 1) * 5)
-        );
+        if (window.innerWidth <= 480) {
+            // Mobile: 5 rows x 4 columns
+            this.board = Array(5).fill().map((_, i) => 
+                tiles.slice(i * 4, (i + 1) * 4)
+            );
+        } else {
+            // Desktop: 4 rows x 5 columns
+            this.board = Array(4).fill().map((_, i) => 
+                tiles.slice(i * 5, (i + 1) * 5)
+            );
+        }
 
         this.flippedTiles.clear();
         this.currentPosition = null;
@@ -116,9 +135,13 @@ class TileGame {
 
         // Check if it's the first move
         if (this.currentPosition === null) {
-            // Check if we're on mobile (4 columns x 5 rows layout)
-            if (window.innerWidth <= 480) {
-                return row === 0 || row === 4 || col === 0 || col === 3;
+            if (this.isMobile) {
+                // Check each edge for mobile layout (4 columns x 5 rows)
+                const lastRow = this.board.length - 1;
+                const lastCol = this.board[0].length - 1;
+                
+                return (row === 0 || row === lastRow) || // Top or bottom row
+                       (col === 0 || col === lastCol);  // First or last column
             } else {
                 // Desktop layout (5 columns x 4 rows)
                 return row === 0 || row === 3 || col === 0 || col === 4;
