@@ -77,8 +77,8 @@ class TileGame {
         this.isProcessingTurnEnd = false;
         this.showAllTiles = false;
         
-        const revealButton = document.getElementById('revealBtn');
-        revealButton.innerHTML = `Reveal Board`;
+        // const revealButton = document.getElementById('revealBtn');
+        // revealButton.innerHTML = `Reveal Board`;
         
         this.renderBoard();
         this.updateGameState();
@@ -185,8 +185,8 @@ class TileGame {
                 this.nextGoalTile = 1;
                 this.showAllTiles = false;
                 this.tryCount++;
-                const revealButton = document.getElementById('revealBtn');
-                revealButton.innerHTML = `Reveal Board`;
+                // const revealButton = document.getElementById('revealBtn');
+                // revealButton.innerHTML = `Reveal Board`;
             }
             this.isProcessingTurnEnd = false;
             //this.setGameMessage('Select a tile on the outer edge to start');
@@ -483,15 +483,15 @@ class TileGame {
     // }
 
     setupEventListeners() {
-        document.getElementById('newGameBtn').onclick = () => this.initializeBoard();
+        // document.getElementById('newGameBtn').onclick = () => this.initializeBoard();
         
-        document.getElementById('revealBtn').onclick = () => {
-            this.showAllTiles = !this.showAllTiles;
-            const button = document.getElementById('revealBtn');
-            button.innerHTML = `
-                              ${this.showAllTiles ? 'Hide Tiles' : 'Reveal Board'}`;
-            this.renderBoard();
-        };
+        // document.getElementById('revealBtn').onclick = () => {
+        //     this.showAllTiles = !this.showAllTiles;
+        //     const button = document.getElementById('revealBtn');
+        //     button.innerHTML = `
+        //                       ${this.showAllTiles ? 'Hide Tiles' : 'Reveal Board'}`;
+        //     this.renderBoard();
+        // };
         
         document.getElementById('restartBtn').onclick = () => {
             this.handleTurnEnd('Starting new attempt...', true);
