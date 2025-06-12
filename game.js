@@ -79,6 +79,7 @@ class TileGame {
         
         // const revealButton = document.getElementById('revealBtn');
         // revealButton.innerHTML = `Reveal Board`;
+        // test
         
         this.renderBoard();
         this.updateGameState();
