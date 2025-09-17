@@ -1,4 +1,844 @@
-// Save daily progress to localStorage
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuzu's Maze</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --tile-size: clamp(64px, 15vw, 72px);
+            --gap-size: clamp(4px, 1.5vw, 8px);
+            --pink-500: #ec4899;
+            --teal-500: #14b8a6;
+            --indigo-500: #6366f1;
+            --cyan-500: #06b6d4;
+            --purple-500: #a855f7;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-700: #374151;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            overflow: hidden;
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: white;
+            color: #1f2937;
+            line-height: 1.5;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .container {
+            width: fit-content;
+            margin: 0;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 5px 5px rgba(0, 0, 0, 0.25);
+            max-width: min(calc(5 * var(--tile-size) + 4 * var(--gap-size) + 2rem), 95vw);
+        }
+
+        .holder {
+            display: flex;
+            flex-direction: column;
+            width: fit-content;
+            max-width: 95vw;
+            margin: 0;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0;
+            flex-direction: row;
+            gap: 1rem;
+            border-bottom: 1px solid gray;
+            width: 100vw;
+            padding: 0.5rem 1rem;
+            background: white;
+            z-index: 10;
+            font-family: "Righteous", sans-serif;
+        }
+
+        h1 { 
+            font-size: 1.5rem;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        #nextGoal, #attemptCounter {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.375rem;
+            background: white;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-height: 44px;
+        }
+
+        #helpBtn {
+            width: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0;
+            font-family: "Righteous", sans-serif;
+        }
+
+        #helpBtn strong {
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .control-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .game-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin: 0;
+            align-items: center;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(auto, var(--tile-size)));
+            grid-template-rows: repeat(4, minmax(auto, var(--tile-size)));
+            gap: var(--gap-size);
+            justify-content: center;
+            width: 100%;
+            max-width: calc(5 * var(--tile-size) + 4 * var(--gap-size));
+        }
+
+        .tile {
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 1;
+            padding: 0;
+            border: none;
+            border-radius: 0.5rem;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            min-height: 44px;
+            perspective: 1000px;
+        }
+
+        .tile-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease-in-out;
+            transform-style: preserve-3d;
+        }
+
+        .tile.flipping .tile-inner {
+            transform: rotateY(180deg);
+        }
+
+        .tile-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 0.5rem;
+        }
+
+        .tile-face-front {
+            transform: rotateY(0deg);
+        }
+
+        .tile-face-back {
+            transform: rotateY(180deg);
+        }
+
+        .tile-image {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            border-radius: 0.5rem;
+        }
+
+        .tile.valid-move:hover {
+            outline: 2px solid #3b82f6;
+        }
+
+        .tile.current {
+            outline: 4px solid #b4ed81;
+            outline-offset: 2px;
+        }
+
+        .tile.revealed {
+            background-color: var(--revealed-color, var(--gray-200));
+        }
+
+        .power-bubbles {
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.5rem;
+        }
+
+        .power-bubble {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            font-size: 0.875rem;
+            min-height: 44px;
+        }
+
+        .power-bubble.hidden {
+            display: none;
+        }
+
+        .power-bubble.pink { background-color: var(--pink-500); }
+        .power-bubble.teal { background-color: var(--teal-500); }
+        .power-bubble.indigo { background-color: var(--indigo-500); }
+        .power-bubble.cyan { background-color: var(--cyan-500); }
+        .power-bubble.purple { background-color: var(--purple-500); }
+
+        .game-message {
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--gray-700);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes flipBack {
+            0% { transform: rotateY(180deg); }
+            100% { transform: rotateY(0deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.2s ease-in;
+        }
+
+        .tile.resetting .tile-inner {
+            animation: flipBack 0.4s ease-in-out;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            animation: slideIn 0.3s ease-out;
+            width: min(700px, 100%);
+            height: 100%;
+            max-height: 90vh;
+            margin: 1rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #victoryModal .modal-content {
+            max-height: min(400px, 90vh);
+            justify-content: center;
+        }
+
+        #victoryModal .modal-body {
+            flex-grow: 0;
+        }
+
+        #victoryModal .modal-header {
+            margin-bottom: 2rem;
+        }
+
+        #victoryModal .modal-footer {
+            margin-top: 2rem;
+        }
+
+        .modal-header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .modal-header h2 {
+            font-size: clamp(1.25rem, 3vw, 1.5rem);
+            margin: 0;
+            color: #374151;
+            width: 100%;
+            font-family: "Righteous", sans-serif;
+        }
+
+        .modal-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 0.5rem;
+            margin: 0 -0.5rem;
+            width: 100%;
+        }
+
+        .help-content {
+            padding: 0.25rem;
+            font-size: clamp(0.8rem, 2vw, 0.9rem);
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .tile-group {
+            margin-bottom: 1.5rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h3 {
+            margin-bottom: 0.75rem;
+            color: #374151;
+            font-size: clamp(0.875rem, 2vw, 1rem);
+            text-align: center;
+            width: 100%;
+            font-family: "Righteous", sans-serif;
+        }
+
+        .tiles-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .tiles-row .tile-explanation {
+            display: flex;
+            gap: 0.5rem;
+            margin: 0 auto;
+            padding: 0;
+            background: none;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 90%;
+            box-sizing: border-box;
+        }
+
+        .two-column-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .tile-explanation {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
+            flex-direction: column;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .tile-explanation .tile {
+            min-width: clamp(24px, 6vw, 32px);
+            min-height: clamp(24px, 6vw, 32px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+            font-weight: bold;
+            font-size: clamp(0.875rem, 2vw, 1rem);
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .tile-explanation p {
+            margin: 0 auto;
+            line-height: 1.3;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .help-tile {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .help-tile img {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+        }
+
+        .modal-footer {
+            flex-shrink: 0;
+            margin-top: 1rem;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+            width: 100%;
+        }
+
+        .close-button {
+            display: none;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 480px) {
+            :root {
+                --tile-size: clamp(54px, 22vw, 80px);
+            }
+
+            .container {
+                box-shadow: none;
+            }
+
+            .game-board {
+                width: 90vw;
+                grid-template-columns: repeat(4, minmax(auto, var(--tile-size)));
+                grid-template-rows: repeat(5, minmax(auto, var(--tile-size)));
+            }
+
+            .power-bubbles {
+                padding: 0.25rem;
+            }
+
+            .power-bubble {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+            }
+
+            .control-btn {
+                padding: 0.25rem 0.75rem;
+                font-size: 0.75rem;
+                min-width: 44px;
+            }
+
+            .modal {
+                padding: 0;
+            }
+
+            .modal-content {
+                margin: 0;
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+            }
+            
+            #victoryModal .modal-content {
+                max-height: 100%;
+            }
+
+            .modal-body {
+                padding: 0 0.25rem;
+                margin: 0 -0.25rem;
+            }
+
+            .help-content {
+                padding: 0;
+            }
+
+            .tiles-row {
+                padding: 0.5rem;
+            }
+
+            .tile-explanation {
+                padding: 0.5rem;
+                gap: 0.5rem;
+            }
+
+            .help-tile img {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        @media (min-width: 640px) {
+            header {
+                padding: 0.5rem 5rem;
+            }
+
+            .game-info {
+                flex-direction: row;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Kuzu's Maze - Daily</h1>
+        <div class="controls">
+            <button id="modeToggleBtn" class="control-btn">
+                Practice
+            </button>
+            <button id="helpBtn" class="control-btn">
+                <span class="icon"><strong>?</strong></span>
+            </button>
+        </div>
+    </header>
+    
+    <div class="holder">
+        <div class="container">
+            <div class="game-info">
+                <div id="dailyDate" style="font-size: 0.875rem; color: #374151; display: none;">
+                    Today's Puzzle
+                </div>
+                <div id="nextGoal">Next Goal: 1</div>
+                <div id="attemptCounter">Attempt: 1</div>
+            </div>
+
+            <div class="game-layout">
+                <div class="game-board" id="gameBoard">
+                    <!-- Game tiles will be generated here by JavaScript -->
+                </div>
+
+                <div class="controls">
+                    <button id="restartBtn" class="control-btn">
+                        Restart Attempt
+                    </button>
+                </div>
+
+                <div class="power-bubbles">
+                    <div id="extraLifeBubble" class="power-bubble pink hidden">
+                        Extra Life
+                    </div>
+                    <div id="anyOrderBubble" class="power-bubble teal hidden">
+                        Next
+                    </div>
+                    <div id="diagonalBubble" class="power-bubble indigo hidden">
+                        Diagonal 
+                    </div>
+                    <div id="warpBubble" class="power-bubble cyan hidden">
+                        Warping
+                    </div>
+                    <div id="grappleBubble" class="power-bubble purple hidden">
+                        Grappling
+                    </div>
+                </div>
+
+                <div id="dailyComplete" class="game-message" style="display: none;">
+                    <p>🎉 Today's puzzle completed! 🎉</p>
+                    <p>Come back tomorrow for a new challenge!</p>
+                </div>
+            </div>
+
+            <div id="victoryModal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header" style="justify-content: center;">
+                        <h2 style="text-align: center;">🎉 Congratulations! 🎉</h2>
+                    </div>
+                    <div class="modal-body">
+                        <p style="text-align: center;">You've completed the sequence!</p>
+                        <p style="text-align: center;">Number of attempts: <span id="finalTryCount"></span></p>
+                    </div>
+                    <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
+                        <button id="closeVictoryBtn" class="control-btn">Close</button>
+                        <button id="revealBoardAfterWin" class="control-btn">Reveal Full Board</button>
+                        <button id="newGameAfterWin" class="control-btn">New Game</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="helpModal" class="modal hidden">
+                <div class="modal-content">
+                    <div style="text-align: center;" class="modal-header">
+                        <h2 style="text-align: center;">How to Play</h2>
+                    </div>
+                    <div class="modal-body">
+                        <div class="help-content">
+                            <div class="tile-group">
+                                <h3>Goal Tiles</h3>
+                                <div class="tiles-row">
+                                    <div class="tile-explanation">
+                                        <div class="help-tile">
+                                            <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ff6b6b'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E1%3C/text%3E%3C/svg%3E" alt="1" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ff8a50'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E2%3C/text%3E%3C/svg%3E" alt="2" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ffa726'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E3%3C/text%3E%3C/svg%3E" alt="3" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ffcc02'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E4%3C/text%3E%3C/svg%3E" alt="4" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%2366bb6a'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E5%3C/text%3E%3C/svg%3E" alt="5" class="tile-image">
+                                        </div>
+                                    </div>
+                                    <p>Must be collected in order (1→2→3→4→5) unless you have the "any order" power</p>
+                                </div>
+                            </div>
+                            <h3>Power Tiles</h3>
+                            <div class="two-column-grid">
+                                <div class="tile-explanation">
+                                    <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%2366bb6a'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E0%3C/text%3E%3C/svg%3E" alt="0" class="tile-image">
+                                    <p>Traversable - Can move through multiple times</p>
+                                </div>
+                                <div class="tile-explanation">
+                                    <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%235c6bc0'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E6%3C/text%3E%3C/svg%3E" alt="6" class="tile-image">
+                                    <p>Grapple - Reveal any tile while staying in place</p>
+                                </div>
+                                <div class="tile-explanation">
+                                    <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ab47bc'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E7%3C/text%3E%3C/svg%3E" alt="7" class="tile-image">
+                                    <p>Extra Life - Survive one death tile (refills with next goal)</p>
+                                </div>
+                                <div class="tile-explanation">
+                                    <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%2326a69a'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E8%3C/text%3E%3C/svg%3E" alt="8" class="tile-image">
+                                    <p>Diagonal - Enable diagonal movement</p>
+                                </div>
+                                <div class="tile-explanation">
+                                    <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ffa726'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='24' font-weight='bold'%3E9%3C/text%3E%3C/svg%3E" alt="9" class="tile-image">
+                                    <p>Out of Order - Collect next goal in any order</p>
+                                </div>
+                                <div class="tile-explanation">
+                                    <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%2342a5f5'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='20' font-weight='bold'%3E10%3C/text%3E%3C/svg%3E" alt="10" class="tile-image">
+                                    <p>Warp - Move to and reveal any tile</p>
+                                </div>
+                                <div class="tile-explanation">
+                                    <img style="height: 72px; width: 72px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ef5350'/%3E%3Ctext x='50' y='60' text-anchor='middle' fill='white' font-size='20' font-weight='bold'%3E11%3C/text%3E%3C/svg%3E" alt="11" class="tile-image">
+                                    <p>Death - Ends attempt unless you have extra life</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: center;">
+                        <button id="closeHelpBtn" class="control-btn">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class TileGame {
+            constructor() {
+                this.board = [];
+                this.currentPosition = null;
+                this.flippedTiles = new Set();
+                this.nextGoalTile = 1;
+                this.canMoveDiagonal = false;
+                this.hasExtraLife = false;
+                this.extraLifeUsed = false;
+                this.isProcessingTurnEnd = false;
+                this.canSelectAnyGoal = false;
+                this.showAllTiles = false;
+                this.collectedGoals = new Set();
+                this.isWarping = false;
+                this.isGrappling = false;
+                this.grapplePosition = null;
+                this.tryCount = 1;
+                this.isMobile = window.innerWidth <= 480;
+                this.isFlipping = false;
+                
+                // Daily board properties
+                this.todaysDate = this.getTodaysDateString();
+                this.dailySeed = this.generateDailySeed();
+                this.isRandomMode = false;
+            
+                this.initializeBoard();
+                this.setupEventListeners();
+                this.loadDailyProgress();
+                
+                window.addEventListener('resize', () => {
+                    const wasMobile = this.isMobile;
+                    this.isMobile = window.innerWidth <= 480;
+                    if (wasMobile !== this.isMobile) {
+                        this.initializeBoard();
+                    }
+                });
+            }
+
+            // Generate a consistent date string (YYYY-MM-DD format)
+            getTodaysDateString() {
+                const today = new Date();
+                return today.toISOString().split('T')[0];
+            }
+
+            // Generate a seed based on the current date
+            generateDailySeed() {
+                const dateStr = this.todaysDate;
+                let hash = 0;
+                for (let i = 0; i < dateStr.length; i++) {
+                    const char = dateStr.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+
+            // Seeded random number generator
+            seededRandom(seed) {
+                let state = seed;
+                return function() {
+                    state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+                    return state / Math.pow(2, 32);
+                };
+            }
+
+            initializeBoard() {
+                // Check if we need to reset for a new day
+                if (this.todaysDate !== this.getTodaysDateString()) {
+                    this.todaysDate = this.getTodaysDateString();
+                    this.dailySeed = this.generateDailySeed();
+                    this.clearDailyProgress();
+                }
+
+                const tiles = [
+                    ...Array(6).fill(0),
+                    1, 2, 3, 4, 5,
+                    6, 7, 8, 9, 10,
+                    ...Array(4).fill(11)
+                ];
+                
+                // Use seeded random for daily mode, regular random for practice mode
+                let randomFunc = this.isRandomMode ? Math.random : this.seededRandom(this.dailySeed);
+                
+                // Fisher-Yates shuffle
+                for (let i = tiles.length - 1; i > 0; i--) {
+                    const j = Math.floor(randomFunc() * (i + 1));
+                    [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+                }
+
+                if (window.innerWidth <= 480) {
+                    this.board = Array(5).fill().map((_, i) => 
+                        tiles.slice(i * 4, (i + 1) * 4)
+                    );
+                } else {
+                    this.board = Array(4).fill().map((_, i) => 
+                        tiles.slice(i * 5, (i + 1) * 5)
+                    );
+                }
+
+                this.flippedTiles.clear();
+                this.currentPosition = null;
+                this.nextGoalTile = 1;
+                this.canMoveDiagonal = false;
+                this.hasExtraLife = false;
+                this.extraLifeUsed = false;
+                this.canSelectAnyGoal = false;
+                this.collectedGoals.clear();
+                this.isWarping = false;
+                this.isGrappling = false;
+                this.grapplePosition = null;
+                this.isProcessingTurnEnd = false;
+                this.showAllTiles = false;
+                this.isFlipping = false;
+                
+                // For daily mode, load attempt count if not completed
+                if (!this.isRandomMode) {
+                    this.loadDailyAttempts();
+                } else {
+                    this.tryCount = 1;
+                }
+                
+                this.renderBoard();
+                this.updateGameState();
+                this.hideVictoryModal();
+                this.hideHelpModal();
+            }
+
+            // Save daily progress to localStorage
             saveDailyProgress() {
                 if (this.isRandomMode) return;
                 
@@ -20,7 +860,6 @@
                 if (savedData) {
                     const dailyData = JSON.parse(savedData);
                     
-                    // Check if it's the same day
                     if (dailyData.date === this.todaysDate) {
                         if (dailyData.completed) {
                             this.showDailyCompleteMessage();
@@ -90,14 +929,464 @@
             isDailyCompleted() {
                 const dailyData = this.loadDailyProgress();
                 return dailyData ? dailyData.completed : false;
-            }    <header>
-        <h1>Kuzu's Maze - Daily</h1>
-        <div class="controls">
-            <button id="modeToggleBtn" class="control-btn">
-                Practice
-            </button>
-            <button id="helpBtn" class="control-btn">
-                <span class="icon"><strong>?</strong></span>
-            </button>
-        </div>
-    </header>
+            }
+
+            getTileImage(value) {
+                const images = {
+                    unflipped: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23e5e7eb"/%3E%3Ctext x="50" y="55" text-anchor="middle" fill="%23374151" font-size="16" font-weight="bold"%3E?%3C/text%3E%3C/svg%3E',
+                    0: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%2366bb6a"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E0%3C/text%3E%3C/svg%3E',
+                    1: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%23ff6b6b"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E1%3C/text%3E%3C/svg%3E',
+                    2: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%23ff8a50"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E2%3C/text%3E%3C/svg%3E',
+                    3: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%23ffa726"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E3%3C/text%3E%3C/svg%3E',
+                    4: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%23ffcc02"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E4%3C/text%3E%3C/svg%3E',
+                    5: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%2366bb6a"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E5%3C/text%3E%3C/svg%3E',
+                    6: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%235c6bc0"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E6%3C/text%3E%3C/svg%3E',
+                    7: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%23ab47bc"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E7%3C/text%3E%3C/svg%3E',
+                    8: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%2326a69a"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E8%3C/text%3E%3C/svg%3E',
+                    9: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%23ffa726"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="24" font-weight="bold"%3E9%3C/text%3E%3C/svg%3E',
+                    10: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%2342a5f5"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="20" font-weight="bold"%3E10%3C/text%3E%3C/svg%3E',
+                    11: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="40" fill="%23ef5350"/%3E%3Ctext x="50" y="60" text-anchor="middle" fill="white" font-size="20" font-weight="bold"%3E11%3C/text%3E%3C/svg%3E'
+                };
+                return images[value] || images.unflipped;
+            }
+
+            isValidMove(row, col) {
+                if (this.isProcessingTurnEnd || this.isFlipping) return false;
+                
+                if (this.isWarping) {
+                    return !this.flippedTiles.has(`${row}-${col}`);
+                }
+            
+                if (this.isGrappling) {
+                    const [currentRow, currentCol] = this.currentPosition;
+                    
+                    const isAdjacent = 
+                        (Math.abs(row - currentRow) === 1 && col === currentCol) ||
+                        (Math.abs(col - currentCol) === 1 && row === currentRow) ||
+                        (this.canMoveDiagonal && 
+                         Math.abs(row - currentRow) === 1 && 
+                         Math.abs(col - currentCol) === 1);
+                
+                    if (isAdjacent) {
+                        return !this.flippedTiles.has(`${row}-${col}`) || 
+                               (this.flippedTiles.has(`${row}-${col}`) && this.board[row][col] === 0);
+                    }
+                    
+                    return !this.flippedTiles.has(`${row}-${col}`);
+                }
+
+                // Check if it's the first move
+                if (this.currentPosition === null) {
+                    if (this.isMobile) {
+                        const lastRow = this.board.length - 1;
+                        const lastCol = this.board[0].length - 1;
+                        
+                        return (row === 0 || row === lastRow) || (col === 0 || col === lastCol);
+                    } else {
+                        return row === 0 || row === 3 || col === 0 || col === 4;
+                    }
+                }
+
+                const [currentRow, currentCol] = this.currentPosition;
+                const orthogonal = (
+                    (Math.abs(row - currentRow) === 1 && col === currentCol) ||
+                    (Math.abs(col - currentCol) === 1 && row === currentRow)
+                );
+                
+                const diagonal = this.canMoveDiagonal && (
+                    Math.abs(row - currentRow) === 1 && Math.abs(col - currentCol) === 1
+                );
+
+                const canMoveToTile = !this.flippedTiles.has(`${row}-${col}`) || 
+                                     (this.flippedTiles.has(`${row}-${col}`) && this.board[row][col] === 0);
+
+                return (orthogonal || diagonal) && canMoveToTile;
+            }
+
+            async flipTile(row, col) {
+                return new Promise((resolve) => {
+                    const tileElement = document.querySelector(`[data-position="${row}-${col}"]`);
+                    if (!tileElement) {
+                        resolve();
+                        return;
+                    }
+
+                    this.isFlipping = true;
+                    tileElement.classList.add('flipping');
+
+                    setTimeout(() => {
+                        const backFace = tileElement.querySelector('.tile-face-back img');
+                        if (backFace) {
+                            backFace.src = this.getTileImage(this.board[row][col]);
+                        }
+                    }, 150);
+
+                    setTimeout(() => {
+                        tileElement.classList.remove('flipping');
+                        this.isFlipping = false;
+                        resolve();
+                    }, 300);
+                });
+            }
+
+            async resetTileAnimations() {
+                const tilesToReset = Array.from(this.flippedTiles).map(pos => {
+                    const [row, col] = pos.split('-').map(Number);
+                    return { row, col, element: document.querySelector(`[data-position="${row}-${col}"]`) };
+                }).filter(tile => tile.element);
+
+                const resetPromises = tilesToReset.map(({ row, col, element }) => {
+                    return new Promise((resolve) => {
+                        element.classList.add('resetting');
+                        
+                        setTimeout(() => {
+                            const backFace = element.querySelector('.tile-face-back img');
+                            if (backFace) {
+                                backFace.src = this.getTileImage('unflipped');
+                            }
+                        }, 200);
+
+                        setTimeout(() => {
+                            element.classList.remove('resetting');
+                            resolve();
+                        }, 400);
+                    });
+                });
+
+                await Promise.all(resetPromises);
+            }
+
+            handleTurnEnd(message, shouldResetBoard = false) {
+                this.isProcessingTurnEnd = true;
+                
+                this.currentPosition = null;
+                this.renderBoard();
+                
+                setTimeout(async () => {
+                    if (shouldResetBoard) {
+                        await this.resetTileAnimations();
+                        
+                        this.flippedTiles.clear();
+                        this.collectedGoals.clear();
+                        this.canMoveDiagonal = false;
+                        this.canSelectAnyGoal = false;
+                        this.hasExtraLife = false;
+                        this.extraLifeUsed = false;
+                        this.isWarping = false;
+                        this.isGrappling = false;
+                        this.grapplePosition = null;
+                        this.nextGoalTile = 1;
+                        this.showAllTiles = false;
+                        this.tryCount++;
+                        
+                        this.saveDailyProgress();
+                    }
+                    this.isProcessingTurnEnd = false;
+                    this.updateGameState();
+                    this.renderBoard();
+                }, 1500);
+            }
+
+            showVictoryModal() {
+                const modal = document.getElementById('victoryModal');
+                modal.classList.remove('hidden');
+                this.isProcessingTurnEnd = true;
+
+                if (!this.isRandomMode) {
+                    this.saveDailyProgress();
+                    this.showDailyCompleteMessage();
+                }
+
+                document.getElementById('finalTryCount').textContent = this.tryCount;
+                
+                const headerText = this.isRandomMode ? 
+                    '🎉 Congratulations! 🎉' : 
+                    '🎉 Daily Puzzle Complete! 🎉';
+                
+                document.querySelector('#victoryModal .modal-header h2').textContent = headerText;
+                
+                document.getElementById('closeVictoryBtn').onclick = () => {
+                    this.hideVictoryModal();
+                    this.isProcessingTurnEnd = false;
+                    this.renderBoard();
+                };
+                
+                document.getElementById('revealBoardAfterWin').onclick = () => {
+                    this.hideVictoryModal();
+                    this.showAllTiles = true;
+                    this.isProcessingTurnEnd = false;
+                    this.renderBoard();
+                };
+                
+                document.getElementById('newGameAfterWin').onclick = () => {
+                    this.hideVictoryModal();
+                    if (this.isRandomMode) {
+                        this.initializeBoard();
+                    } else {
+                        this.toggleMode();
+                    }
+                };
+            }
+
+            hideVictoryModal() {
+                const modal = document.getElementById('victoryModal');
+                modal.classList.add('hidden');
+                this.isProcessingTurnEnd = false;
+            }
+
+            showHelpModal() {
+                const modal = document.getElementById('helpModal');
+                modal.classList.remove('hidden');
+            }
+
+            hideHelpModal() {
+                const modal = document.getElementById('helpModal');
+                modal.classList.add('hidden');
+            }
+
+            handleTileEffect(row, col, tileValue, isGrappleEffect = false) {
+                if (tileValue >= 1 && tileValue <= 5) {
+                    if (this.canSelectAnyGoal || tileValue === this.nextGoalTile) {
+                        this.collectedGoals.add(tileValue);
+             
+                        if (this.extraLifeUsed) {
+                            this.hasExtraLife = true;
+                            this.extraLifeUsed = false;
+                        }
+             
+                        if (this.canSelectAnyGoal) {
+                            const remainingGoals = new Set([1, 2, 3, 4, 5]);
+                            this.collectedGoals.forEach(value => {
+                                remainingGoals.delete(value);
+                            });
+                            
+                            const nextGoal = Math.min(...remainingGoals);
+                            this.nextGoalTile = nextGoal;
+                            this.canSelectAnyGoal = false;
+                        } else {
+                            this.nextGoalTile = this.getNextRequiredGoal();
+                        }
+                        
+                        if (this.collectedGoals.size === 5) {
+                            setTimeout(() => {
+                                this.showVictoryModal();
+                            }, 500);
+                            return true;
+                        }
+                    } else {
+                        this.handleTurnEnd(`Wrong order! Needed ${this.nextGoalTile}, found ${tileValue}`, true);
+                        return true;
+                    }
+                }
+             
+                if (tileValue === 6 && !isGrappleEffect) {
+                    this.isGrappling = true;
+                    this.grapplePosition = [row, col];
+                    return false;
+                }
+             
+                switch (tileValue) {
+                    case 7:
+                        this.hasExtraLife = true;
+                        this.extraLifeUsed = false;
+                        break;
+             
+                    case 8:
+                        this.canMoveDiagonal = true;
+                        break;
+             
+                    case 9:
+                        this.canSelectAnyGoal = true;
+                        break;
+             
+                    case 10:
+                        if (!isGrappleEffect) {
+                            this.isWarping = true;
+                        } else {
+                            this.isGrappling = false;
+                            this.isWarping = true;
+                        }
+                        break;
+             
+                    case 11:
+                        if (this.hasExtraLife) {
+                            this.hasExtraLife = false;
+                            this.extraLifeUsed = true;
+                        } else {
+                            this.handleTurnEnd('Death tile! Starting new attempt...', true);
+                            return true;
+                        }
+                        break;
+                }
+                return false;
+            }
+
+            async handleTileClick(row, col) {
+                if (!this.isValidMove(row, col)) {
+                    return;
+                }
+             
+                const tileValue = this.board[row][col];
+                this.flippedTiles.add(`${row}-${col}`);
+                
+                await this.flipTile(row, col);
+             
+                if (this.isWarping) {
+                    this.isWarping = false;
+                    this.currentPosition = [row, col];
+                    const shouldEnd = this.handleTileEffect(row, col, tileValue);
+                    if (!shouldEnd) {
+                        // Warp message
+                    }
+                    this.updateGameState();
+                    this.renderBoard();
+                    return;
+                }
+             
+                if (this.isGrappling) {
+                    const [currentRow, currentCol] = this.currentPosition;
+                    const isAdjacent = 
+                        (Math.abs(row - currentRow) === 1 && col === currentCol) ||
+                        (Math.abs(col - currentCol) === 1 && row === currentRow) ||
+                        (this.canMoveDiagonal && 
+                         Math.abs(row - currentRow) === 1 && 
+                         Math.abs(col - currentCol) === 1);
+             
+                    if (isAdjacent) {
+                        this.isGrappling = false;
+                        this.grapplePosition = null;
+                        this.currentPosition = [row, col];
+                        this.handleTileEffect(row, col, tileValue);
+                    } else {
+                        const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
+                        if (!shouldEnd) {
+                            this.currentPosition = this.grapplePosition;
+                        }
+                        this.isGrappling = false;
+                        this.grapplePosition = null;
+                    }
+                    this.updateGameState();
+                    this.renderBoard();
+                    return;
+                }
+             
+                this.currentPosition = [row, col];
+                this.handleTileEffect(row, col, tileValue);
+                this.updateGameState();
+                this.renderBoard();
+            }
+
+            getNextRequiredGoal() {
+                for (let i = 1; i <= 5; i++) {
+                    if (!this.collectedGoals.has(i)) {
+                        return i;
+                    }
+                }
+                return 5;
+            }
+
+            updateGameState() {
+                document.getElementById('nextGoal').textContent = 
+                    `Next Goal: ${this.nextGoalTile <= 5 ? this.nextGoalTile : 'Complete!'}`;
+                document.getElementById('attemptCounter').textContent = 
+                    `Attempt: ${this.tryCount}`;
+            
+                document.getElementById('extraLifeBubble').classList.toggle('hidden', !this.hasExtraLife);
+                document.getElementById('anyOrderBubble').classList.toggle('hidden', !this.canSelectAnyGoal);
+                document.getElementById('diagonalBubble').classList.toggle('hidden', !this.canMoveDiagonal);
+                document.getElementById('warpBubble').classList.toggle('hidden', !this.isWarping);
+                document.getElementById('grappleBubble').classList.toggle('hidden', !this.isGrappling);
+            
+                const buttons = document.querySelectorAll('.control-btn');
+                buttons.forEach(button => {
+                    button.disabled = this.isProcessingTurnEnd || this.isFlipping;
+                });
+            }
+
+            renderBoard() {
+                const gameBoard = document.getElementById('gameBoard');
+                gameBoard.innerHTML = '';
+            
+                this.board.forEach((row, rowIndex) => {
+                    row.forEach((tile, colIndex) => {
+                        const tileElement = document.createElement('button');
+                        tileElement.className = 'tile';
+                        tileElement.setAttribute('data-position', `${rowIndex}-${colIndex}`);
+                        
+                        const tileInner = document.createElement('div');
+                        tileInner.className = 'tile-inner';
+                        
+                        const frontFace = document.createElement('div');
+                        frontFace.className = 'tile-face tile-face-front';
+                        const frontImage = document.createElement('img');
+                        frontImage.className = 'tile-image';
+                        frontImage.src = this.getTileImage('unflipped');
+                        frontFace.appendChild(frontImage);
+                        
+                        const backFace = document.createElement('div');
+                        backFace.className = 'tile-face tile-face-back';
+                        const backImage = document.createElement('img');
+                        backImage.className = 'tile-image';
+                        
+                        if (this.flippedTiles.has(`${rowIndex}-${colIndex}`) || this.showAllTiles) {
+                            backImage.src = this.getTileImage(tile);
+                            tileElement.classList.add('flipping');
+                        } else {
+                            backImage.src = this.getTileImage('unflipped');
+                        }
+                        
+                        backFace.appendChild(backImage);
+                        
+                        tileInner.appendChild(frontFace);
+                        tileInner.appendChild(backFace);
+                        tileElement.appendChild(tileInner);
+            
+                        if (this.isValidMove(rowIndex, colIndex) && !this.isProcessingTurnEnd && !this.isFlipping) {
+                            tileElement.classList.add('valid-move');
+                        }
+            
+                        if (this.currentPosition && 
+                            this.currentPosition[0] === rowIndex && 
+                            this.currentPosition[1] === colIndex) {
+                            tileElement.classList.add('current');
+                        }
+            
+                        tileElement.onclick = () => this.handleTileClick(rowIndex, colIndex);
+                        gameBoard.appendChild(tileElement);
+                    });
+                });
+            }
+
+            setupEventListeners() {
+                document.getElementById('restartBtn').onclick = () => {
+                    this.handleTurnEnd('Starting new attempt...', true);
+                };
+
+                document.getElementById('helpBtn').onclick = () => {
+                    this.showHelpModal();
+                };
+
+                document.getElementById('closeHelpBtn').onclick = () => {
+                    this.hideHelpModal();
+                };
+
+                document.getElementById('helpModal').onclick = (e) => {
+                    if (e.target.id === 'helpModal') {
+                        this.hideHelpModal();
+                    }
+                };
+
+                document.getElementById('modeToggleBtn').onclick = () => {
+                    this.toggleMode();
+                };
+                
+                this.updateModeDisplay();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new TileGame();
+        });
+    </script>
+</body>
+</html>
