@@ -836,7 +836,11 @@
                     tilesRevealed: 0,
                     powersUsed: new Set()
                 };
+
+                // Persistent game tracking
+                this.gameId = null;
             
+                this.loadGameState();
                 this.initializeBoard();
                 this.setupEventListeners();
                 
@@ -850,58 +854,282 @@
                 });
             }
 
+            // Save game state to localStorage
+            saveGameState() {
+                try {
+                    const gameState = {
+                        // Current game session
+                        gameId: this.gameId,
+                        board: this.board,
+                        currentPosition: this.currentPosition,
+                        flippedTiles: Array.from(this.flippedTiles),
+                        nextGoalTile: this.nextGoalTile,
+                        collectedGoals: Array.from(this.collectedGoals),
+                        canMoveDiagonal: this.canMoveDiagonal,
+                        hasExtraLife: this.hasExtraLife,
+                        extraLifeUsed: this.extraLifeUsed,
+                        canSelectAnyGoal: this.canSelectAnyGoal,
+                        isWarping: this.isWarping,
+                        isGrappling: this.isGrappling,
+                        grapplePosition: this.grapplePosition,
+                        tryCount: this.tryCount,
+                        victoryStats: {
+                            tilesRevealed: this.victoryStats.tilesRevealed,
+                            powersUsed: Array.from(this.victoryStats.powersUsed)
+                        },
+                        
+                        // Persistent statistics
+                        totalGamesPlayed: this.getTotalGamesPlayed(),
+                        bestAttemptCount: this.getBestAttemptCount(),
+                        bestTilesRevealed: this.getBestTilesRevealed(),
+                        totalVictories: this.getTotalVictories(),
+                        lastSaved: Date.now()
+                    };
+                    
+                    localStorage.setItem('kuzuMazeGame', JSON.stringify(gameState));
+                } catch (error) {
+                    console.log('Could not save game state:', error);
+                }
+            }
+
+            // Load game state from localStorage
+            loadGameState() {
+                try {
+                    const saved = localStorage.getItem('kuzuMazeGame');
+                    if (!saved) return false;
+                    
+                    const gameState = JSON.parse(saved);
+                    
+                    // Check if there's a current game to resume (not completed and recent)
+                    const isRecentGame = gameState.lastSaved && (Date.now() - gameState.lastSaved < 7 * 24 * 60 * 60 * 1000); // 7 days
+                    const isIncompleteGame = gameState.gameId && gameState.collectedGoals && gameState.collectedGoals.length < 5;
+                    
+                    if (isRecentGame && isIncompleteGame) {
+                        // Restore current game state
+                        this.gameId = gameState.gameId;
+                        this.board = gameState.board;
+                        this.currentPosition = gameState.currentPosition;
+                        this.flippedTiles = new Set(gameState.flippedTiles || []);
+                        this.nextGoalTile = gameState.nextGoalTile || 1;
+                        this.collectedGoals = new Set(gameState.collectedGoals || []);
+                        this.canMoveDiagonal = gameState.canMoveDiagonal || false;
+                        this.hasExtraLife = gameState.hasExtraLife || false;
+                        this.extraLifeUsed = gameState.extraLifeUsed || false;
+                        this.canSelectAnyGoal = gameState.canSelectAnyGoal || false;
+                        this.isWarping = gameState.isWarping || false;
+                        this.isGrappling = gameState.isGrappling || false;
+                        this.grapplePosition = gameState.grapplePosition;
+                        this.tryCount = gameState.tryCount || 1;
+                        
+                        if (gameState.victoryStats) {
+                            this.victoryStats = {
+                                tilesRevealed: gameState.victoryStats.tilesRevealed || 0,
+                                powersUsed: new Set(gameState.victoryStats.powersUsed || [])
+                            };
+                        }
+                        
+                        // Show resume notification
+                        setTimeout(() => this.showResumeNotification(), 500);
+                        return true;
+                    }
+                } catch (error) {
+                    console.log('Could not load saved game:', error);
+                }
+                return false;
+            }
+
+            // Generate unique game ID
+            generateGameId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+            }
+
+            // Clear current game session but keep statistics
+            clearCurrentGame() {
+                try {
+                    const saved = localStorage.getItem('kuzuMazeGame');
+                    if (saved) {
+                        const gameState = JSON.parse(saved);
+                        // Keep statistics but remove current game data
+                        const persistentData = {
+                            totalGamesPlayed: gameState.totalGamesPlayed || 0,
+                            bestAttemptCount: gameState.bestAttemptCount,
+                            bestTilesRevealed: gameState.bestTilesRevealed,
+                            totalVictories: gameState.totalVictories || 0,
+                            lastSaved: Date.now()
+                        };
+                        localStorage.setItem('kuzuMazeGame', JSON.stringify(persistentData));
+                    }
+                } catch (error) {
+                    console.log('Could not clear current game:', error);
+                }
+            }
+
+            // Statistics getters
+            getTotalGamesPlayed() {
+                try {
+                    const saved = localStorage.getItem('kuzuMazeGame');
+                    return saved ? (JSON.parse(saved).totalGamesPlayed || 0) : 0;
+                } catch (error) {
+                    return 0;
+                }
+            }
+
+            getBestAttemptCount() {
+                try {
+                    const saved = localStorage.getItem('kuzuMazeGame');
+                    return saved ? JSON.parse(saved).bestAttemptCount : null;
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            getBestTilesRevealed() {
+                try {
+                    const saved = localStorage.getItem('kuzuMazeGame');
+                    return saved ? JSON.parse(saved).bestTilesRevealed : null;
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            getTotalVictories() {
+                try {
+                    const saved = localStorage.getItem('kuzuMazeGame');
+                    return saved ? (JSON.parse(saved).totalVictories || 0) : 0;
+                } catch (error) {
+                    return 0;
+                }
+            }
+
+            // Update victory statistics
+            updateVictoryStatistics() {
+                try {
+                    const saved = localStorage.getItem('kuzuMazeGame');
+                    const currentStats = saved ? JSON.parse(saved) : {};
+                    
+                    const newStats = {
+                        ...currentStats,
+                        totalGamesPlayed: (currentStats.totalGamesPlayed || 0) + 1,
+                        totalVictories: (currentStats.totalVictories || 0) + 1,
+                        lastSaved: Date.now()
+                    };
+                    
+                    // Update best attempt count (lower is better)
+                    if (!newStats.bestAttemptCount || this.tryCount < newStats.bestAttemptCount) {
+                        newStats.bestAttemptCount = this.tryCount;
+                    }
+                    
+                    // Update best tiles revealed (lower is better)
+                    if (!newStats.bestTilesRevealed || this.victoryStats.tilesRevealed < newStats.bestTilesRevealed) {
+                        newStats.bestTilesRevealed = this.victoryStats.tilesRevealed;
+                    }
+                    
+                    localStorage.setItem('kuzuMazeGame', JSON.stringify(newStats));
+                } catch (error) {
+                    console.log('Could not update victory statistics:', error);
+                }
+            }
+
+            // Show resume notification
+            showResumeNotification() {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background-color: #3b82f6;
+                    color: white;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 0.5rem;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    z-index: 1001;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    opacity: 0;
+                    transition: opacity 0.3s ease-in-out;
+                `;
+                notification.textContent = '🎮 Game resumed! Continue where you left off.';
+                
+                document.body.appendChild(notification);
+                
+                // Fade in
+                setTimeout(() => {
+                    notification.style.opacity = '1';
+                }, 10);
+                
+                // Fade out and remove after 4 seconds
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => {
+                        if (document.body.contains(notification)) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 300);
+                }, 4000);
+            }
+
             initializeBoard() {
-                this.tryCount = 1;
+                // Only generate new board if not resuming a game
+                if (!this.gameId) {
+                    this.tryCount = 1;
 
-                const tiles = [
-                    ...Array(6).fill(0),
-                    1, 2, 3, 4, 5,
-                    6, 7, 8, 9, 10,
-                    ...Array(4).fill(11)
-                ];
-                
-                for (let i = tiles.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+                    const tiles = [
+                        ...Array(6).fill(0),
+                        1, 2, 3, 4, 5,
+                        6, 7, 8, 9, 10,
+                        ...Array(4).fill(11)
+                    ];
+                    
+                    for (let i = tiles.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+                    }
+
+                    if (window.innerWidth <= 480) {
+                        // Mobile: 5 rows x 4 columns
+                        this.board = Array(5).fill().map((_, i) => 
+                            tiles.slice(i * 4, (i + 1) * 4)
+                        );
+                    } else {
+                        // Desktop: 4 rows x 5 columns
+                        this.board = Array(4).fill().map((_, i) => 
+                            tiles.slice(i * 5, (i + 1) * 5)
+                        );
+                    }
+
+                    this.flippedTiles.clear();
+                    this.currentPosition = null;
+                    this.nextGoalTile = 1;
+                    this.canMoveDiagonal = false;
+                    this.hasExtraLife = false;
+                    this.extraLifeUsed = false;
+                    this.canSelectAnyGoal = false;
+                    this.collectedGoals.clear();
+                    this.isWarping = false;
+                    this.isGrappling = false;
+                    this.grapplePosition = null;
+                    this.isProcessingTurnEnd = false;
+                    this.showAllTiles = false;
+                    this.isFlipping = false;
+                    
+                    // Reset victory statistics for new game
+                    this.victoryStats = {
+                        tilesRevealed: 0,
+                        powersUsed: new Set()
+                    };
+
+                    // Generate new game ID
+                    this.gameId = this.generateGameId();
                 }
-
-                if (window.innerWidth <= 480) {
-                    // Mobile: 5 rows x 4 columns
-                    this.board = Array(5).fill().map((_, i) => 
-                        tiles.slice(i * 4, (i + 1) * 4)
-                    );
-                } else {
-                    // Desktop: 4 rows x 5 columns
-                    this.board = Array(4).fill().map((_, i) => 
-                        tiles.slice(i * 5, (i + 1) * 5)
-                    );
-                }
-
-                this.flippedTiles.clear();
-                this.currentPosition = null;
-                this.nextGoalTile = 1;
-                this.canMoveDiagonal = false;
-                this.hasExtraLife = false;
-                this.extraLifeUsed = false;
-                this.canSelectAnyGoal = false;
-                this.collectedGoals.clear();
-                this.isWarping = false;
-                this.isGrappling = false;
-                this.grapplePosition = null;
-                this.isProcessingTurnEnd = false;
-                this.showAllTiles = false;
-                this.isFlipping = false;
-                
-                // Reset victory statistics
-                this.victoryStats = {
-                    tilesRevealed: 0,
-                    powersUsed: new Set()
-                };
                 
                 this.renderBoard();
                 this.updateGameState();
                 this.hideVictoryModal();
                 this.hideHelpModal();
+                
+                // Save initial state
+                this.saveGameState();
             }
 
             getTileImage(value) {
@@ -1075,12 +1303,54 @@
                 }, 1500);
             }
 
+            handleTurnEnd(message, shouldResetBoard = false) {
+                this.isProcessingTurnEnd = true;
+                
+                this.currentPosition = null;
+                this.renderBoard();
+                
+                setTimeout(async () => {
+                    if (shouldResetBoard) {
+                        // Play reset animations
+                        await this.resetTileAnimations();
+                        
+                        this.flippedTiles.clear();
+                        this.collectedGoals.clear();
+                        this.canMoveDiagonal = false;
+                        this.canSelectAnyGoal = false;
+                        this.hasExtraLife = false;
+                        this.extraLifeUsed = false;
+                        this.isWarping = false;
+                        this.isGrappling = false;
+                        this.grapplePosition = null;
+                        this.nextGoalTile = 1;
+                        this.showAllTiles = false;
+                        this.tryCount++;
+                        
+                        // Reset victory statistics for new attempt
+                        this.victoryStats = {
+                            tilesRevealed: 0,
+                            powersUsed: new Set()
+                        };
+
+                        // Save updated state
+                        this.saveGameState();
+                    }
+                    this.isProcessingTurnEnd = false;
+                    this.updateGameState();
+                    this.renderBoard();
+                }, 1500);
+            }
+
             showVictoryModal() {
                 const modal = document.getElementById('victoryModal');
                 modal.classList.remove('hidden');
                 this.isProcessingTurnEnd = true;
 
-                // Update victory statistics
+                // Update victory statistics in localStorage
+                this.updateVictoryStatistics();
+
+                // Update victory statistics display
                 document.getElementById('finalTryCount').textContent = this.tryCount;
                 document.getElementById('tilesRevealed').textContent = `${this.victoryStats.tilesRevealed} out of 20`;
 
@@ -1128,12 +1398,17 @@
                 
                 document.getElementById('newGameAfterWin').onclick = () => {
                     this.hideVictoryModal();
+                    this.clearCurrentGame(); // Clear saved game
+                    this.gameId = null; // Reset game ID so new board is generated
                     this.initializeBoard();
                 };
 
                 document.getElementById('shareResultsBtn').onclick = () => {
                     this.shareResults();
                 };
+
+                // Clear current game from localStorage since it's completed
+                this.clearCurrentGame();
             }
 
             shareResults() {
@@ -1381,6 +1656,7 @@ Think you can do better? Try Kuzu's Maze!`;
                     }
                     this.updateGameState();
                     this.renderBoard();
+                    this.saveGameState(); // Save after each move
                     return;
                 }
              
@@ -1411,6 +1687,7 @@ Think you can do better? Try Kuzu's Maze!`;
                     }
                     this.updateGameState();
                     this.renderBoard();
+                    this.saveGameState(); // Save after each move
                     return;
                 }
              
@@ -1418,6 +1695,7 @@ Think you can do better? Try Kuzu's Maze!`;
                 this.handleTileEffect(row, col, tileValue);
                 this.updateGameState();
                 this.renderBoard();
+                this.saveGameState(); // Save after each move
             }
 
             getNextRequiredGoal() {

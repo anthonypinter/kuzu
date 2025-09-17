@@ -1,0 +1,103 @@
+// Save daily progress to localStorage
+            saveDailyProgress() {
+                if (this.isRandomMode) return;
+                
+                const dailyData = {
+                    date: this.todaysDate,
+                    attempts: this.tryCount,
+                    completed: this.collectedGoals.size === 5,
+                    completedAttempts: this.collectedGoals.size === 5 ? this.tryCount : null
+                };
+                
+                localStorage.setItem('kuzu-maze-daily', JSON.stringify(dailyData));
+            }
+
+            // Load daily progress from localStorage
+            loadDailyProgress() {
+                if (this.isRandomMode) return;
+                
+                const savedData = localStorage.getItem('kuzu-maze-daily');
+                if (savedData) {
+                    const dailyData = JSON.parse(savedData);
+                    
+                    // Check if it's the same day
+                    if (dailyData.date === this.todaysDate) {
+                        if (dailyData.completed) {
+                            this.showDailyCompleteMessage();
+                        }
+                        return dailyData;
+                    }
+                }
+                return null;
+            }
+
+            // Load attempt count for the daily puzzle
+            loadDailyAttempts() {
+                const dailyData = this.loadDailyProgress();
+                if (dailyData && !dailyData.completed) {
+                    this.tryCount = dailyData.attempts;
+                } else if (dailyData && dailyData.completed) {
+                    this.tryCount = dailyData.completedAttempts;
+                } else {
+                    this.tryCount = 1;
+                }
+            }
+
+            // Clear daily progress (called when new day starts)
+            clearDailyProgress() {
+                localStorage.removeItem('kuzu-maze-daily');
+            }
+
+            // Show daily completion message
+            showDailyCompleteMessage() {
+                if (!this.isRandomMode) {
+                    document.getElementById('dailyComplete').style.display = 'block';
+                }
+            }
+
+            // Hide daily completion message
+            hideDailyCompleteMessage() {
+                document.getElementById('dailyComplete').style.display = 'none';
+            }
+
+            // Toggle between daily and random mode
+            toggleMode() {
+                this.isRandomMode = !this.isRandomMode;
+                this.hideDailyCompleteMessage();
+                this.initializeBoard();
+                this.updateModeDisplay();
+            }
+
+            // Update UI to show current mode
+            updateModeDisplay() {
+                const header = document.querySelector('h1');
+                const modeButton = document.getElementById('modeToggleBtn');
+                const dailyDateDiv = document.getElementById('dailyDate');
+                
+                if (this.isRandomMode) {
+                    header.textContent = "Kuzu's Maze - Practice";
+                    modeButton.textContent = 'Daily';
+                    dailyDateDiv.style.display = 'none';
+                } else {
+                    header.textContent = "Kuzu's Maze - Daily";
+                    modeButton.textContent = 'Practice';
+                    dailyDateDiv.style.display = 'block';
+                    dailyDateDiv.textContent = `Today's Puzzle - ${new Date().toLocaleDateString()}`;
+                }
+            }
+
+            // Check if today's puzzle is already completed
+            isDailyCompleted() {
+                const dailyData = this.loadDailyProgress();
+                return dailyData ? dailyData.completed : false;
+            }    <header>
+        <h1>Kuzu's Maze - Daily</h1>
+        <div class="controls">
+            <button id="modeToggleBtn" class="control-btn">
+                Practice
+            </button>
+            <button id="helpBtn" class="control-btn">
+                <span class="icon"><strong>?</strong></span>
+            </button>
+        </div>
+    </header>
