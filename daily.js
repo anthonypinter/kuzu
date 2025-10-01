@@ -310,7 +310,7 @@ Think you can do better? Try Kuzu's Maze!`;
 
     getTileImage(value) {
         const images = {
-            unflipped: '/src/unflipped.svg',
+            unflipped: 'src/unflipped.svg',
             0: 'src/walkthrough.svg',
             1: 'src/flower1.svg',
             2: 'src/flower2.svg',
