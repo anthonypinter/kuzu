@@ -209,11 +209,11 @@ class TileGame {
         
         if (this.isRandomMode) {
             header.textContent = "Kuzu's Maze - Practice";
-            modeButton.textContent = 'Daily';
+            // modeButton.textContent = 'Daily';
             dailyDateDiv.style.display = 'none';
         } else {
-            header.textContent = "Kuzu's Maze - Daily";
-            modeButton.textContent = 'Practice';
+            header.textContent = "Kuzu's Maze";
+            // modeButton.textContent = 'Practice';
             dailyDateDiv.style.display = 'block';
             dailyDateDiv.textContent = `Today's Puzzle - ${new Date().toLocaleDateString()}`;
         }
@@ -777,10 +777,10 @@ Think you can do better? Try Kuzu's Maze!`;
             }
         };
 
-        document.getElementById('revealBtn').onclick = () => {
-            this.showAllTiles = true;
-            this.renderBoard();
-        };
+        // document.getElementById('revealBtn').onclick = () => {
+        //     this.showAllTiles = true;
+        //     this.renderBoard();
+        // };
 
         document.getElementById('helpBtn').onclick = () => {
             this.showHelpModal();
@@ -796,14 +796,16 @@ Think you can do better? Try Kuzu's Maze!`;
             }
         };
 
-        document.getElementById('modeToggleBtn').onclick = () => {
-            this.toggleMode();
-        };
+        // document.getElementById('modeToggleBtn').onclick = () => {
+        //     this.toggleMode();
+        // };
         
         this.updateModeDisplay();
+        
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     new TileGame();
 });
+
