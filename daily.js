@@ -327,6 +327,8 @@ Think you can do better? Try Kuzu's Maze!`;
         return images[value] || images.unflipped;
     }
 
+    // adding a comment to show pull request functionality
+
     isValidMove(row, col) {
         // Disable all moves if daily is completed or game is processing
         if (this.isProcessingTurnEnd || this.isFlipping || this.isDailyCompleted) return false;
