@@ -248,13 +248,13 @@ class TileGame {
         }
         
         // Create the message
-        const message = `🎉 Kuzu's Maze Victory! 🎉
+        const message = `🎉 Victory! 🎉
 📊 My Results:
 - Attempts: ${this.tryCount}
 - Tiles Revealed: ${this.victoryStats.tilesRevealed} out of 20
 - Powers Used: ${powersText}
 
-Think you can do better? Try Kuzu's Maze!`;
+Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
 
         // Detect if device is likely mobile/tablet
         const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
