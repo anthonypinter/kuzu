@@ -45,6 +45,15 @@ class TileGame {
         });
     }
 
+    testWithDate(dateString) {
+       console.log('Testing with date:', dateString);
+       this.todaysDate = dateString;
+       this.dailySeed = this.generateDailySeed();
+       this.clearDailyProgress();
+       this.isDailyCompleted = false;
+       this.initializeBoard();
+   }
+
     getTodaysDateString() {
     // TESTING ONLY - Remove this after testing
     //return '2025-01-13'; // Change this to test different dates
