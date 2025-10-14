@@ -15,7 +15,7 @@ class TileGame {
         this.isGrappling = false;
         this.grapplePosition = null;
         this.tryCount = 1;
-        this.isMobile = window.innerWidth <= 480;
+        // this.isMobile = window.innerWidth <= 480;
         this.isFlipping = false;
         this.isRandomMode = false;
         this.isDailyCompleted = false;
@@ -36,13 +36,13 @@ class TileGame {
         this.setupEventListeners();
         this.loadDailyProgress();
         
-        window.addEventListener('resize', () => {
-            const wasMobile = this.isMobile;
-            this.isMobile = window.innerWidth <= 480;
-            if (wasMobile !== this.isMobile) {
-                this.initializeBoard();
-            }
-        });
+        // window.addEventListener('resize', () => {
+        //     const wasMobile = this.isMobile;
+        //     this.isMobile = window.innerWidth <= 480;
+        //     if (wasMobile !== this.isMobile) {
+        //         this.initializeBoard();
+        //     }
+        // });
     }
 
     testWithDate(dateString) {
@@ -94,6 +94,7 @@ class TileGame {
         }
         return false;
     }
+<<<<<<< Updated upstream
 
     initializeBoard() {
         // Check if date has changed before initializing
@@ -156,6 +157,65 @@ class TileGame {
                 this.isDailyCompleted = false;
             }
         } else {
+=======
+
+    initializeBoard() {
+        // Check if date has changed before initializing
+        this.checkAndUpdateDate();
+
+    const tiles = [
+        ...Array(6).fill(0),
+        1, 2, 3, 4, 5,
+        6, 7, 8, 9, 10,
+        ...Array(4).fill(11)
+    ];
+    
+    let randomFunc = this.isRandomMode ? Math.random : this.seededRandom(this.dailySeed);
+    
+    for (let i = tiles.length - 1; i > 0; i--) {
+        const j = Math.floor(randomFunc() * (i + 1));
+        [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+
+    // Always use 4 columns x 5 rows layout
+    this.board = Array(5).fill().map((_, i) => 
+        tiles.slice(i * 4, (i + 1) * 4)
+    );
+
+        this.flippedTiles.clear();
+        this.currentPosition = null;
+        this.nextGoalTile = 1;
+        this.canMoveDiagonal = false;
+        this.hasExtraLife = false;
+        this.extraLifeUsed = false;
+        this.canSelectAnyGoal = false;
+        this.collectedGoals.clear();
+        this.isWarping = false;
+        this.isGrappling = false;
+        this.grapplePosition = null;
+        this.isProcessingTurnEnd = false;
+        this.showAllTiles = false;
+        this.isFlipping = false;
+        
+        // Reset victory stats
+        this.victoryStats = {
+            powersUsed: new Set(),
+            tilesRevealed: 0
+        };
+        
+        if (!this.isRandomMode) {
+            this.loadDailyAttempts();
+            // Check if TODAY'S daily is completed (after clearing old data)
+            const dailyData = this.loadDailyProgress();
+            if (dailyData && dailyData.completed) {
+                this.isDailyCompleted = true;
+                this.showAllTiles = true;
+                this.isProcessingTurnEnd = true;
+            } else {
+                this.isDailyCompleted = false;
+            }
+        } else {
+>>>>>>> Stashed changes
             this.tryCount = 1;
             this.isDailyCompleted = false;
         }
@@ -378,15 +438,12 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         }
 
         if (this.currentPosition === null) {
-            if (this.isMobile) {
-                const lastRow = this.board.length - 1;
-                const lastCol = this.board[0].length - 1;
-                
-                return (row === 0 || row === lastRow) || (col === 0 || col === lastCol);
-            } else {
-                return row === 0 || row === 3 || col === 0 || col === 4;
-            }
-        }
+        // Always use 5 rows x 4 columns logic
+        const lastRow = this.board.length - 1;
+        const lastCol = this.board[0].length - 1;
+        
+        return (row === 0 || row === lastRow) || (col === 0 || col === lastCol);
+    }
 
         const [currentRow, currentCol] = this.currentPosition;
         const orthogonal = (

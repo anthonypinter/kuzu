@@ -42,7 +42,7 @@ body {
     background: white;
     border-radius: 0.75rem;
     box-shadow: 0 5px 5px rgba(0, 0, 0, 0.25);
-    max-width: min(calc(5 * var(--tile-size) + 4 * var(--gap-size) + 2rem), 95vw);
+    max-width: min(calc(4 * var(--tile-size) + 3 * var(--gap-size) + 2rem), 95vw);
 }
 
 .holder {
@@ -143,12 +143,12 @@ h1 {
 
 .game-board {
     display: grid;
-    grid-template-columns: repeat(5, minmax(auto, var(--tile-size)));
-    grid-template-rows: repeat(4, minmax(auto, var(--tile-size)));
+    grid-template-columns: repeat(4, minmax(auto, var(--tile-size)));
+    grid-template-rows: repeat(5, minmax(auto, var(--tile-size)));
     gap: var(--gap-size);
     justify-content: center;
     width: 100%;
-    max-width: calc(5 * var(--tile-size) + 4 * var(--gap-size));
+    max-width: calc(4 * var(--tile-size) + 3 * var(--gap-size));
 }
 
 .tile {
@@ -491,11 +491,11 @@ h3 {
         box-shadow: none;
     }
 
-    .game-board {
+    /* .game-board {
         width: 90vw;
         grid-template-columns: repeat(4, minmax(auto, var(--tile-size)));
         grid-template-rows: repeat(5, minmax(auto, var(--tile-size)));
-    }
+    } */
 
     .power-bubbles {
         padding: 0.25rem;
