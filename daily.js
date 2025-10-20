@@ -54,6 +54,58 @@ class TileGame {
        this.initializeBoard();
    }
 
+   
+// DATE TESTING MECHANISM -- uncomment this, and comment testWithDate above.
+//    testWithDate(dateString) {
+//     console.log('Testing with date:', dateString);
+//     this.todaysDate = dateString;
+//     this.dailySeed = this.generateDailySeed();
+//     this.clearDailyProgress();
+//     this.isDailyCompleted = false;
+    
+//     // Re-initialize the board WITHOUT calling checkAndUpdateDate
+//     // Copy the initializeBoard logic but skip the date check
+//     const tiles = [
+//         ...Array(6).fill(0),
+//         1, 2, 3, 4, 5,
+//         6, 7, 8, 9, 10,
+//         ...Array(4).fill(11)
+//     ];
+    
+//     let randomFunc = this.isRandomMode ? Math.random : this.seededRandom(this.dailySeed);
+    
+//     for (let i = tiles.length - 1; i > 0; i--) {
+//         const j = Math.floor(randomFunc() * (i + 1));
+//         [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+//     }
+
+//     this.board = Array(5).fill().map((_, i) => 
+//         tiles.slice(i * 4, (i + 1) * 4)
+//     );
+
+//     // Reset all the game state variables
+//     this.flippedTiles.clear();
+//     this.currentPosition = null;
+//     this.nextGoalTile = 1;
+//     this.canMoveDiagonal = false;
+//     this.hasExtraLife = false;
+//     this.extraLifeUsed = false;
+//     this.canSelectAnyGoal = false;
+//     this.collectedGoals.clear();
+//     this.isWarping = false;
+//     this.isGrappling = false;
+//     this.grapplePosition = null;
+//     this.isProcessingTurnEnd = false;
+//     this.showAllTiles = false;
+//     this.isFlipping = false;
+//     this.tryCount = 1;
+    
+//     this.victoryStats = {
+//         powersUsed: new Set(),
+//         tilesRevealed: 0
+//     };
+// }
+
     getTodaysDateString() {
     // TESTING ONLY - Remove this after testing
     //return '2025-01-13'; // Change this to test different dates
@@ -64,23 +116,32 @@ class TileGame {
 }
 
     generateDailySeed() {
-        const dateStr = this.todaysDate;
-        let hash = 0;
-        for (let i = 0; i < dateStr.length; i++) {
-            const char = dateStr.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
-        }
-        return Math.abs(hash);
+    const dateStr = this.todaysDate;
+    let hash = 0;
+    for (let i = 0; i < dateStr.length; i++) {
+        const char = dateStr.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash | 0; // Convert to 32-bit integer
     }
+    // Add extra mixing to improve distribution
+    hash = hash ^ (hash >>> 16);
+    hash = Math.imul(hash, 0x85ebca6b);
+    hash = hash ^ (hash >>> 13);
+    hash = Math.imul(hash, 0xc2b2ae35);
+    hash = hash ^ (hash >>> 16);
+    
+    return Math.abs(hash);
+}
 
     seededRandom(seed) {
-        let state = seed;
-        return function() {
-            state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-            return state / Math.pow(2, 32);
-        };
-    }
+    let state = seed;
+    return function() {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        return Math.abs(state) / 0x7fffffff;
+    };
+}
 
     checkAndUpdateDate() {
         const currentDate = this.getTodaysDateString();
@@ -805,6 +866,24 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         
         this.updateModeDisplay();
     }
+
+    logBoardLayout() {
+    console.log('Date:', this.todaysDate);
+    console.log('Seed:', this.dailySeed);
+    console.log('Board:');
+    this.board.forEach((row, i) => {
+        console.log(`Row ${i}:`, row.join(', '));
+    });
+    // Find warp tile position
+    for (let r = 0; r < this.board.length; r++) {
+        for (let c = 0; c < this.board[r].length; c++) {
+            if (this.board[r][c] === 10) {
+                console.log(`Warp tile at: Row ${r}, Col ${c}`);
+            }
+        }
+    }
+    console.log('---');
+}
 }
 
 document.addEventListener('DOMContentLoaded', () => {
