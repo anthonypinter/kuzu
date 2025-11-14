@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuzu's Maze</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="time.css">
+</head>
+<body>
+    <header>
+        <h1>Kuzu's Maze</h1>
+        <div class="controls">
+            <!-- <button id="revealBtn" class="control-btn">
+                Reveal
+            </button>
+            <button id="modeToggleBtn" class="control-btn">
+                Practice
+            </button> -->
+            <button id="helpBtn" class="control-btn">
+                <span class="icon"><strong>?</strong></span>
+            </button>
+        </div>
+    </header>
+    
+    <div class="holder">
+        <div class="container">
+            <div class="game-info">
+                <div id="dailyDate" style="font-size: 0.875rem; color: #374151; display: none;">
+                    Today's Puzzle
+                </div>
+                <div id="nextGoal">Next Goal: 1</div>
+                <div id="attemptCounter">Attempt: 1</div>
+            </div>
+
+            <div class="game-layout">
+                <div class="game-board" id="gameBoard">
+                    <!-- Game tiles will be generated here by JavaScript -->
+                </div>
+
+                <div class="controls">
+                    <button id="restartBtn" class="control-btn">
+                        Restart Attempt
+                    </button>
+                </div>
+
+                <div class="power-bubbles">
+                    <div id="extraLifeBubble" class="power-bubble pink hidden">
+                        Extra Life
+                    </div>
+                    <div id="anyOrderBubble" class="power-bubble teal hidden">
+                        Next
+                    </div>
+                    <div id="diagonalBubble" class="power-bubble indigo hidden">
+                        Diagonal 
+                    </div>
+                    <div id="warpBubble" class="power-bubble cyan hidden">
+                        Warping
+                    </div>
+                    <div id="grappleBubble" class="power-bubble purple hidden">
+                        Grappling
+                    </div>
+                </div>
+
+                <div id="dailyComplete" class="game-message" style="display: none;">
+                    <p>🎉 Today's puzzle completed! 🎉</p>
+                    <p>Come back tomorrow for a new challenge!</p>
+                    
+                </div>
+            </div>
+
+            <div id="victoryModal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header" style="justify-content: center;">
+                        <h2 style="text-align: center;">🎉 Congratulations! 🎉</h2>
+                    </div>
+                    <div class="modal-body">
+                        <p style="text-align: center;">You've completed the sequence!</p>
+                        <p style="text-align: center;">Number of attempts: <span id="finalTryCount"></span></p>
+                    </div>
+                    <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
+                        <button id="closeVictoryBtn" class="control-btn">Close</button>
+                        <button id="copyResultBtn" class="control-btn">Copy Result</button>
+                        <button id="revealBoardAfterWin" class="control-btn">Reveal Full Board</button>
+                        <button id="newGameAfterWin" class="control-btn">New Game</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="helpModal" class="modal hidden">
+                <div class="modal-content">
+                    <div style="text-align: center;" class="modal-header">
+                        <h2 style="text-align: center;">How to Play Kuzu's Maze</h2>
+                    </div>
+                    <div class="modal-body">
+                        <div class="help-content">
+                            <div class="tile-group">
+                                <div class="tiles-row">
+                                <p>In Kuzu's Maze, your goal is collect all of the Flowers hidden throughout the maze. You'll utilize Power-ups to navigate the Maze while trying to avoid falling victim to lurking Vine Monsters. Come back each day for a new maze, and share your results with friends to compare who completed the Maze in the fewest attempts!</p>
+                                <h3>Gameplay</h3>
+                                <p>Explore the maze by entering from one of the edges (selecting a tile on the edge of the grid). You can select tiles in orthogonal directions (up, down, left, right) from your current tile. Tiles that are flipped over are no longer available to move to, with the exception of Stepping Stones.</p>
+                                <h3>Stepping Stones</h3>
+                                <div class="help-tile">
+                                    <img style="height: 72px; width: 72px" src="src/walkthrough.svg" alt="stepping stone tile" class="tile-image">
+                                </div>
+                                <p>Stepping Stones are free spaces and are helpful for finding a Successful Path. After revealing a Stepping Stone, you can move through it as many times as you'd like, allowing for easier movement and avoiding turn-ending faults.</p>
+                                <h3>Goal Flowers</h3>
+                                <div class="help-tile">
+                                            <img style="height: 72px; width: 72px" src="src/flower1.svg" alt="1" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="src/flower2.svg" alt="2" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="src/flower3.svg" alt="3" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="src/flower4.svg" alt="4" class="tile-image">
+                                            <img style="height: 72px; width: 72px" src="src/flower5.svg" alt="5" class="tile-image">
+                                </div>
+                                <p>Reveal all of the flowers in ascending order 1 to 5 to win the game.</p>
+                                <h3>Faults</h3>
+                                <div class="help-tile">
+                                <img style="height: 72px; width: 72px" src="src/death.svg" alt="11" class="tile-image">
+                                </div>
+                                <p>A player's turn ends when a fault occurs. Faults include revealing a Flower in the wrong order, becoming stuck with no available moves (requiring a restart) or when they reveal a Vine Monster.</p>
+                                
+                                <h3>Power-Ups</h3>
+                                <p>There are a variety of power-ups to help you navigate the Maze.</p>
+                            
+
+                                <div class="help-tile">
+                                    <div class="tile-explanation">
+                                        <p><strong>Spray (Continuous, Refillable)</strong></p>
+                                    <img style="height: 72px; width: 72px" src="src/extralife.svg" alt="7" class="tile-image">
+                                    
+                                    <p>Allows you to Spray and neutralize a single Vine Monster you flip over, and by doing so, move onto that tile and continue that turn. Flipping another Vine Monster without refilling the Spray results in your turn ending. Spray is refilled when you correctly reveal the next Flower.</p>
+                                </div>
+                            </div>
+                            
+                                <div class="help-tile">
+                                    <div class="tile-explanation">
+                                        <p><strong>Flower Power (Single-Use)</strong></p>
+                                    <img style="height: 72px; width: 72px" src="src/ooflower.svg" alt="9" class="tile-image">
+                                    
+                                    <p>Allows you to get your next Flower out of order, if you so choose. Upon revealing your next Flower, collection resumes as normal, in ascending order.</p>
+                                </div>
+                            </div>
+
+                                <div class="help-tile">
+                                    <div class="tile-explanation">
+                                        <p><strong>Shears (Continuous)</strong></p>
+                                    <img style="height: 72px; width: 72px" src="src/diagonal.svg" alt="8" class="tile-image">
+                                    
+                                    <p>When revealed, Shears allow a player to begin moving diagonally in addition to a player's basic moves. This power-up is ongoing and lasts until your turn is over.</p>
+                                </div>
+                            </div>
+
+                                <div class="help-tile">
+                                    <div class="tile-explanation">
+                                        <p><strong>Portal (Single-Use)</strong></p>
+                                    <img style="height: 72px; width: 72px" src="src/warp.svg" alt="10" class="tile-image">
+                                    
+                                    <p>When revealed, the Portal tile gives you the option of flipping any available tile, regardless of location in the Maze. If you don't trigger a Fault, you move to that newly flipped tile, and continue to play from there.</p>
+                                </div>
+                            </div>
+
+                        
+                             <div class="help-tile">
+                                    <div class="tile-explanation">
+                                        <p><strong>Grapple (Single-Use)</strong></p>
+                                    <img style="height: 72px; width: 72px" src="src/grapple.svg" alt="6" class="tile-image">
+                                    
+                                    <p>Allows you to flip any tile in the maze, but you stay on the Grapple tile. Any tile effect is activated immediately for the newly flipped tile, and then play resumes from the Grapple tile.</p>
+                                </div>
+                            </div>
+
+                            <h3>Winning</h3>
+                                <p>Reveal all Flowers in ascending order 1 to 5 to complete the Maze and win. Try to do it with as few tiles and in as few turns as possible!</p>
+                            </div>
+                            
+                            
+                           
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: center;">
+                        <button id="closeHelpBtn" class="control-btn">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="time.js"></script>
+</body>
+</html>
+
