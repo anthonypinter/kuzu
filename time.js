@@ -19,7 +19,8 @@ class TileGame {
         this.isFlipping = false;
         this.isRandomMode = false;
         this.isDailyCompleted = false;
-        this.midnightResetTimeout = null;
+        this.midnightResetTimeout = null; // Add this line
+        this.setupMidnightReset(); // Add this line
         
         
         // Victory statistics tracking
@@ -147,17 +148,24 @@ class TileGame {
 }
 
     checkAndUpdateDate() {
-        const currentDate = this.getTodaysDateString();
-        if (this.todaysDate !== currentDate) {
-            console.log('New day detected! Updating from', this.todaysDate, 'to', currentDate);
-            this.todaysDate = currentDate;
-            this.dailySeed = this.generateDailySeed();
-            this.clearDailyProgress();
-            this.isDailyCompleted = false;
-            return true;
-        }
-        return false;
+    const currentDate = this.getTodaysDateString();
+    console.log('Checking date change:');
+    console.log('Current date:', currentDate);
+    console.log('Stored date:', this.todaysDate);
+
+    if (this.todaysDate !== currentDate) {
+        console.log('🎉 NEW DAY DETECTED! 🎉');
+        console.log('Updating from', this.todaysDate, 'to', currentDate);
+        
+        this.todaysDate = currentDate;
+        this.dailySeed = this.generateDailySeed();
+        this.clearDailyProgress();
+        this.isDailyCompleted = false;
+        
+        return true;
     }
+    return false;
+}
 
     initializeBoard() {
         // Check if date has changed before initializing
@@ -889,39 +897,75 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
 }
 
 setupMidnightReset() {
-    // Calculate time until next midnight in the user's local timezone
-    const calculateTimeToMidnight = () => {
-        const now = new Date();
-        const midnight = new Date(
-            now.getFullYear(), 
-            now.getMonth(), 
-            now.getDate() + 1, 
-            0, 0, 0, 0
-        );
-        return midnight.getTime() - now.getTime();
-    };
+    // Debug logging
+    console.log('Setting up midnight reset');
+    console.log('Current date:', this.getTodaysDateString());
 
-    // Set a timeout to reset at midnight
+    // Calculate time to next midnight more explicitly
+    const now = new Date();
+    const midnight = new Date(
+        now.getFullYear(), 
+        now.getMonth(), 
+        now.getDate() + 1, 
+        0, 0, 0, 0
+    );
+
+    const timeUntilMidnight = midnight.getTime() - now.getTime();
+    
+    console.log('Time until midnight (ms):', timeUntilMidnight);
+    console.log('Midnight will be:', midnight.toLocaleString());
+
     const timeoutId = setTimeout(() => {
-        console.log('Daily reset triggered at midnight');
-        this.checkAndUpdateDate();
-        this.initializeBoard();
+        console.log('🌟 MIDNIGHT RESET TRIGGERED 🌟');
+        console.log('Current time:', new Date().toLocaleString());
         
-        // Optional: Show a "New Daily Puzzle" notification
-        const dailyDateDiv = document.getElementById('dailyDate');
-        dailyDateDiv.textContent = `New Daily Puzzle - ${new Date().toLocaleDateString()}`;
-        dailyDateDiv.style.color = '#10b981';
+        // Ensure date change
+        const wasReset = this.checkAndUpdateDate();
         
-        // Revert color after a few seconds
-        setTimeout(() => {
-            dailyDateDiv.style.color = '#374151';
-        }, 5000);
+        if (wasReset) {
+            this.initializeBoard();
+            
+            // Update UI to show new date
+            const dailyDateDiv = document.getElementById('dailyDate');
+            if (dailyDateDiv) {
+                dailyDateDiv.textContent = `New Daily Puzzle - ${new Date().toLocaleDateString()}`;
+                dailyDateDiv.style.color = '#10b981';
+                
+                // Revert color after a few seconds
+                setTimeout(() => {
+                    dailyDateDiv.style.color = '#374151';
+                }, 5000);
+            }
+        } else {
+            console.log('No reset needed - date unchanged');
+        }
 
+        // Always set up next reset
         this.setupMidnightReset();
-    }, calculateTimeToMidnight());
+    }, timeUntilMidnight);
 
-    // Store timeout ID to clear it if needed
+    // Store timeout ID
     this.midnightResetTimeout = timeoutId;
+
+    // Log for verification
+    console.log('Midnight reset scheduled');
+}
+
+// Optional test method
+testMidnightReset() {
+    console.log('Current full date:', new Date());
+    console.log('Today\'s date string:', this.getTodaysDateString());
+    console.log('Stored date:', this.todaysDate);
+    console.log('Current daily seed:', this.dailySeed);
+    
+    // Force a date change check
+    const wasReset = this.checkAndUpdateDate();
+    console.log('Was reset triggered?', wasReset);
+    
+    if (wasReset) {
+        console.log('New date:', this.todaysDate);
+        console.log('New daily seed:', this.dailySeed);
+    }
 }
 
 // Optional method to clear the timeout if needed
