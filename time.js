@@ -1,304 +1,185 @@
 class TileGame {
     constructor() {
+        // Game State Tracking
         this.board = [];
         this.currentPosition = null;
         this.flippedTiles = new Set();
         this.nextGoalTile = 1;
+        this.collectedGoals = new Set();
+
+        // Game Mechanics Flags
         this.canMoveDiagonal = false;
         this.hasExtraLife = false;
         this.extraLifeUsed = false;
-        this.isProcessingTurnEnd = false;
         this.canSelectAnyGoal = false;
+        
+        // Game Control Flags
+        this.isProcessingTurnEnd = false;
+        this.isFlipping = false;
+        this.isDailyCompleted = false;
         this.showAllTiles = false;
-        this.collectedGoals = new Set();
+
+        // Special Mechanics
         this.isWarping = false;
         this.isGrappling = false;
         this.grapplePosition = null;
+
+        // Game Progress
         this.tryCount = 1;
-        // this.isMobile = window.innerWidth <= 480;
-        this.isFlipping = false;
-        this.isRandomMode = false;
-        this.isDailyCompleted = false;
-        this.midnightResetTimeout = null; // Add this line
-        this.setupMidnightReset(); // Add this line
-        
-        
-        // Victory statistics tracking
         this.victoryStats = {
             powersUsed: new Set(),
             tilesRevealed: 0
         };
-        
-        // Initialize date and seed
-        this.todaysDate = this.getTodaysDateString();
-        this.dailySeed = this.generateDailySeed();
 
-        // Check date before initializing to ensure fresh daily puzzle
-        this.setupMidnightReset();
-        this.checkAndUpdateDate();
+        // Board Management
+        this.todaysDate = this.getTodaysDateString();
+        this.isRandomMode = false;
+        this.boardDataUrl = 'boards.json';
+    }
+
+    // Async Initialization Method
+    async initialize() {
+        // Future: Load board from external source
+        await this.loadBoard();
         this.initializeBoard();
         this.setupEventListeners();
         this.loadDailyProgress();
-        
-        // window.addEventListener('resize', () => {
-        //     const wasMobile = this.isMobile;
-        //     this.isMobile = window.innerWidth <= 480;
-        //     if (wasMobile !== this.isMobile) {
-        //         this.initializeBoard();
-        //     }
-        // });
     }
 
-    testWithDate(dateString) {
-       console.log('Testing with date:', dateString);
-       this.todaysDate = dateString;
-       this.dailySeed = this.generateDailySeed();
-       this.clearDailyProgress();
-       this.isDailyCompleted = false;
-       this.initializeBoard();
-   }
+    // Modify the loadBoard method to fetch from JSON
+    async loadBoard() {
+        if (this.isRandomMode) {
+            this.board = this.generateRandomBoard();
+        } else {
+            try {
+                this.board = await this.fetchDailyBoard();
+            } catch (error) {
+                console.error('Failed to load daily board:', error);
+                // Fallback to random board generation if fetch fails
+                this.board = this.generateRandomBoard();
+            }
+        }
+    }
 
-   
-// DATE TESTING MECHANISM -- uncomment this, and comment testWithDate above.
-//    testWithDate(dateString) {
-//     console.log('Testing with date:', dateString);
-//     this.todaysDate = dateString;
-//     this.dailySeed = this.generateDailySeed();
-//     this.clearDailyProgress();
-//     this.isDailyCompleted = false;
-    
-//     // Re-initialize the board WITHOUT calling checkAndUpdateDate
-//     // Copy the initializeBoard logic but skip the date check
-//     const tiles = [
-//         ...Array(6).fill(0),
-//         1, 2, 3, 4, 5,
-//         6, 7, 8, 9, 10,
-//         ...Array(4).fill(11)
-//     ];
-    
-//     let randomFunc = this.isRandomMode ? Math.random : this.seededRandom(this.dailySeed);
-    
-//     for (let i = tiles.length - 1; i > 0; i--) {
-//         const j = Math.floor(randomFunc() * (i + 1));
-//         [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
-//     }
+    async fetchDailyBoard() {
+        // Fetch the JSON file
+        const response = await fetch(this.boardDataUrl);
+        if (!response.ok) {
+            throw new Error('Failed to fetch board data');
+        }
+        const boardData = await response.json();
 
-//     this.board = Array(5).fill().map((_, i) => 
-//         tiles.slice(i * 4, (i + 1) * 4)
-//     );
+        // Find the board for today's date
+        const boardForToday = boardData[this.todaysDate];
 
-//     // Reset all the game state variables
-//     this.flippedTiles.clear();
-//     this.currentPosition = null;
-//     this.nextGoalTile = 1;
-//     this.canMoveDiagonal = false;
-//     this.hasExtraLife = false;
-//     this.extraLifeUsed = false;
-//     this.canSelectAnyGoal = false;
-//     this.collectedGoals.clear();
-//     this.isWarping = false;
-//     this.isGrappling = false;
-//     this.grapplePosition = null;
-//     this.isProcessingTurnEnd = false;
-//     this.showAllTiles = false;
-//     this.isFlipping = false;
-//     this.tryCount = 1;
-    
-//     this.victoryStats = {
-//         powersUsed: new Set(),
-//         tilesRevealed: 0
-//     };
-// }
+        if (!boardForToday) {
+            throw new Error(`No board found for date: ${this.todaysDate}`);
+        }
+
+        // Validate the board structure
+        if (!Array.isArray(boardForToday) || 
+            boardForToday.length !== 5 || 
+            !boardForToday.every(row => row.length === 4)) {
+            throw new Error('Invalid board structure');
+        }
+
+        return boardForToday;
+    }
+
+    // getTodaysDateString() {
+    //     const today = new Date();
+    //     return today.toISOString().split('T')[0];
+    // }
 
     getTodaysDateString() {
-    // TESTING ONLY - Remove this after testing
-    //return '2025-01-13'; // Change this to test different dates
-    
-    // Original code
-     const today = new Date();
-    return today.toISOString().split('T')[0];
-}
-
-    generateDailySeed() {
-    const dateStr = this.todaysDate;
-    let hash = 0;
-    for (let i = 0; i < dateStr.length; i++) {
-        const char = dateStr.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash | 0; // Convert to 32-bit integer
-    }
-    // Add extra mixing to improve distribution
-    hash = hash ^ (hash >>> 16);
-    hash = Math.imul(hash, 0x85ebca6b);
-    hash = hash ^ (hash >>> 13);
-    hash = Math.imul(hash, 0xc2b2ae35);
-    hash = hash ^ (hash >>> 16);
-    
-    return Math.abs(hash);
-}
-
-    seededRandom(seed) {
-    let state = seed;
-    return function() {
-        state ^= state << 13;
-        state ^= state >> 17;
-        state ^= state << 5;
-        return Math.abs(state) / 0x7fffffff;
-    };
-}
-
-    checkAndUpdateDate() {
-    const currentDate = this.getTodaysDateString();
-    console.log('Checking date change:');
-    console.log('Current date:', currentDate);
-    console.log('Stored date:', this.todaysDate);
-
-    if (this.todaysDate !== currentDate) {
-        console.log('🎉 NEW DAY DETECTED! 🎉');
-        console.log('Updating from', this.todaysDate, 'to', currentDate);
-        
-        this.todaysDate = currentDate;
-        this.dailySeed = this.generateDailySeed();
-        this.clearDailyProgress();
-        this.isDailyCompleted = false;
-        
-        return true;
-    }
-    return false;
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
     initializeBoard() {
-        // Check if date has changed before initializing
-        this.checkAndUpdateDate();
+        // Reset Game State
+        this.flippedTiles.clear();
+        this.currentPosition = null;
+        this.nextGoalTile = 1;
+        this.collectedGoals.clear();
 
-    const tiles = [
-        ...Array(6).fill(0),
-        1, 2, 3, 4, 5,
-        6, 7, 8, 9, 10,
-        ...Array(4).fill(11)
-    ];
-    
-    let randomFunc = this.isRandomMode ? Math.random : this.seededRandom(this.dailySeed);
-    
-    for (let i = tiles.length - 1; i > 0; i--) {
-        const j = Math.floor(randomFunc() * (i + 1));
-        [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
-    }
+        // Reset Mechanics
+        this.canMoveDiagonal = false;
+        this.hasExtraLife = false;
+        this.extraLifeUsed = false;
+        this.canSelectAnyGoal = false;
+        this.isWarping = false;
+        this.isGrappling = false;
+        this.grapplePosition = null;
 
-    // Always use 4 columns x 5 rows layout
-    this.board = Array(5).fill().map((_, i) => 
-        tiles.slice(i * 4, (i + 1) * 4)
-    );
+        // Reset Control Flags
+        this.isProcessingTurnEnd = false;
+        this.isFlipping = false;
+        this.showAllTiles = false;
 
-
-    this.flippedTiles.clear();
-    this.currentPosition = null;
-    this.nextGoalTile = 1;
-    this.canMoveDiagonal = false;
-    this.hasExtraLife = false;
-    this.extraLifeUsed = false;
-    this.canSelectAnyGoal = false;
-    this.collectedGoals.clear();
-    this.isWarping = false;
-    this.isGrappling = false;
-    this.grapplePosition = null;
-    this.isProcessingTurnEnd = false;
-    this.showAllTiles = false;
-    this.isFlipping = false;
-    
-    // Reset victory stats
-    this.victoryStats = {
-        powersUsed: new Set(),
-        tilesRevealed: 0
-    };
-    
-    if (!this.isRandomMode) {
-        this.loadDailyAttempts();
-        // Check if TODAY'S daily is completed (after clearing old data)
-        const dailyData = this.loadDailyProgress();
-        if (dailyData && dailyData.completed) {
-            this.isDailyCompleted = true;
-            this.showAllTiles = true;
-            this.isProcessingTurnEnd = true;
-        } else {
-            this.isDailyCompleted = false;
-        }
-    } else {
-        this.tryCount = 1;
-        this.isDailyCompleted = false;
-    }
-    
-    this.renderBoard();
-    this.updateGameState();
-    this.hideVictoryModal();
-    this.hideHelpModal();
-}
-
-    saveDailyProgress() {
-        if (this.isRandomMode) return;
-        
-        const dailyData = {
-            date: this.todaysDate,
-            attempts: this.tryCount,
-            completed: this.collectedGoals.size === 5,
-            completedAttempts: this.collectedGoals.size === 5 ? this.tryCount : null
+        // Reset Victory Stats
+        this.victoryStats = {
+            powersUsed: new Set(),
+            tilesRevealed: 0
         };
-        
-        localStorage.setItem('kuzu-maze-daily', JSON.stringify(dailyData));
-    }
 
-    loadDailyProgress() {
-        if (this.isRandomMode) return;
-        
-        const savedData = localStorage.getItem('kuzu-maze-daily');
-        if (savedData) {
-            const dailyData = JSON.parse(savedData);
-            
-            if (dailyData.date === this.todaysDate) {
-                if (dailyData.completed) {
-                    this.showDailyCompleteMessage();
-                }
-                return dailyData;
+        // Update Try Count
+        if (!this.isRandomMode) {
+            this.loadDailyAttempts();
+            const dailyData = this.loadDailyProgress();
+            if (dailyData && dailyData.completed) {
+                this.isDailyCompleted = true;
+                this.showAllTiles = true;
+                this.isProcessingTurnEnd = true;
+            } else {
+                this.isDailyCompleted = false;
             }
-        }
-        return null;
-    }
-
-    loadDailyAttempts() {
-        const dailyData = this.loadDailyProgress();
-        if (dailyData && !dailyData.completed) {
-            this.tryCount = dailyData.attempts;
-        } else if (dailyData && dailyData.completed) {
-            this.tryCount = dailyData.completedAttempts;
         } else {
             this.tryCount = 1;
+            this.isDailyCompleted = false;
         }
+        
+        // Render and Update
+        this.renderBoard();
+        this.updateGameState();
+        this.hideVictoryModal();
+        this.hideHelpModal();
     }
 
-    clearDailyProgress() {
-        localStorage.removeItem('kuzu-maze-daily');
-    }
-
-    showDailyCompleteMessage() {
-        if (!this.isRandomMode) {
-            document.getElementById('dailyComplete').style.display = 'block';
+    generateRandomBoard() {
+        // Create a default random board generation method
+        const tiles = [
+            ...Array(6).fill(0),  // Stepping stones
+            1, 2, 3, 4, 5,        // Flowers
+            6, 7, 8, 9, 10,       // Power-ups
+            ...Array(4).fill(11)  // Death tiles
+        ];
+        
+        // Fisher-Yates shuffle
+        for (let i = tiles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
         }
-    }
 
-    hideDailyCompleteMessage() {
-        document.getElementById('dailyComplete').style.display = 'none';
+        // Create 5x4 board
+        this.board = Array(5).fill().map((_, i) => 
+            tiles.slice(i * 4, (i + 1) * 4)
+        );
+
+        return this.board;
     }
 
     toggleMode() {
         this.isRandomMode = !this.isRandomMode;
-        this.hideDailyCompleteMessage();
         this.initializeBoard();
         this.updateModeDisplay();
     }
 
     updateModeDisplay() {
         const header = document.querySelector('h1');
-        const modeButton = document.getElementById('modeToggleBtn');
         const dailyDateDiv = document.getElementById('dailyDate');
         
         if (this.isRandomMode) {
@@ -308,95 +189,6 @@ class TileGame {
             header.textContent = "Kuzu's Maze";
             dailyDateDiv.style.display = 'block';
             dailyDateDiv.textContent = `Today's Puzzle - ${new Date().toLocaleDateString()}`;
-        }
-        
-        const dailyData = this.loadDailyProgress();
-        if (!this.isRandomMode && dailyData && dailyData.completed) {
-            this.showDailyCompleteMessage();
-        } else {
-            this.hideDailyCompleteMessage();
-        }
-    }
-
-    shareResults() {
-        // Format powers used
-        const powerNames = {
-            7: 'Extra Life',
-            8: 'Diagonal',
-            9: 'Any Order',
-            10: 'Warp',
-            6: 'Grapple'
-        };
-        
-        let powersText = "";
-        if (this.victoryStats.powersUsed.size === 0) {
-            powersText = "None - Pure skill! 💪";
-        } else {
-            const powers = Array.from(this.victoryStats.powersUsed)
-                .map(power => powerNames[power])
-                .filter(name => name)
-                .join(", ");
-            powersText = powers;
-        }
-        
-        // Create the message
-        const message = `🎉 Victory! 🎉
-📊 My Results:
-- Attempts: ${this.tryCount}
-- Tiles Revealed: ${this.victoryStats.tilesRevealed} out of 20
-- Powers Used: ${powersText}
-
-Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
-
-        // Detect if device is likely mobile/tablet
-        const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-            || ('ontouchstart' in window)
-            || (navigator.maxTouchPoints > 0);
-        
-        // Use Web Share API only on mobile devices, otherwise always use clipboard
-        if (navigator.share && isMobileDevice) {
-            navigator.share({
-                title: "Kuzu's Maze Victory!",
-                text: message
-            }).catch(err => {
-                console.log('Error sharing:', err);
-                this.fallbackShare(message);
-            });
-        } else {
-            // Always use clipboard for desktop/laptop
-            this.fallbackShare(message);
-        }
-    }
-
-    fallbackShare(message) {
-        try {
-            navigator.clipboard.writeText(message).then(() => {
-                const copyBtn = document.getElementById('copyResultBtn');
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = 'Copied!';
-                copyBtn.style.background = '#10b981';
-                
-                setTimeout(() => {
-                    copyBtn.textContent = originalText;
-                    copyBtn.style.background = '';
-                }, 2000);
-            });
-        } catch (err) {
-            // Fallback for older browsers
-            const textArea = document.createElement('textarea');
-            textArea.value = message;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            
-            const copyBtn = document.getElementById('copyResultBtn');
-            const originalText = copyBtn.textContent;
-            copyBtn.textContent = 'Copied!';
-            
-            setTimeout(() => {
-                copyBtn.textContent = originalText;
-            }, 2000);
         }
     }
 
@@ -420,7 +212,6 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
     }
 
     isValidMove(row, col) {
-        // Disable all moves if daily is completed or game is processing
         if (this.isProcessingTurnEnd || this.isFlipping || this.isDailyCompleted) return false;
         
         if (this.isWarping) {
@@ -446,12 +237,11 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         }
 
         if (this.currentPosition === null) {
-        // Always use 5 rows x 4 columns logic
-        const lastRow = this.board.length - 1;
-        const lastCol = this.board[0].length - 1;
-        
-        return (row === 0 || row === lastRow) || (col === 0 || col === lastCol);
-    }
+            const lastRow = this.board.length - 1;
+            const lastCol = this.board[0].length - 1;
+            
+            return (row === 0 || row === lastRow) || (col === 0 || col === lastCol);
+        }
 
         const [currentRow, currentCol] = this.currentPosition;
         const orthogonal = (
@@ -495,139 +285,6 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         });
     }
 
-    async resetTileAnimations() {
-        const tilesToReset = Array.from(this.flippedTiles).map(pos => {
-            const [row, col] = pos.split('-').map(Number);
-            return { row, col, element: document.querySelector(`[data-position="${row}-${col}"]`) };
-        }).filter(tile => tile.element);
-
-        const resetPromises = tilesToReset.map(({ row, col, element }) => {
-            return new Promise((resolve) => {
-                element.classList.add('resetting');
-                
-                setTimeout(() => {
-                    const backFace = element.querySelector('.tile-face-back img');
-                    if (backFace) {
-                        backFace.src = this.getTileImage('unflipped');
-                    }
-                }, 200);
-
-                setTimeout(() => {
-                    element.classList.remove('resetting');
-                    resolve();
-                }, 400);
-            });
-        });
-
-        await Promise.all(resetPromises);
-    }
-
-    handleTurnEnd(message, shouldResetBoard = false) {
-        this.isProcessingTurnEnd = true;
-        
-        this.currentPosition = null;
-        this.renderBoard();
-        
-        setTimeout(async () => {
-            if (shouldResetBoard) {
-                await this.resetTileAnimations();
-                
-                this.flippedTiles.clear();
-                this.collectedGoals.clear();
-                this.canMoveDiagonal = false;
-                this.canSelectAnyGoal = false;
-                this.hasExtraLife = false;
-                this.extraLifeUsed = false;
-                this.isWarping = false;
-                this.isGrappling = false;
-                this.grapplePosition = null;
-                this.nextGoalTile = 1;
-                this.showAllTiles = false;
-                this.tryCount++;
-                
-                // Reset victory stats
-                this.victoryStats = {
-                    powersUsed: new Set(),
-                    tilesRevealed: 0
-                };
-                
-                this.saveDailyProgress();
-            }
-            this.isProcessingTurnEnd = false;
-            this.updateGameState();
-            this.renderBoard();
-        }, 1500);
-    }
-
-    showVictoryModal() {
-        const modal = document.getElementById('victoryModal');
-        modal.classList.remove('hidden');
-        this.isProcessingTurnEnd = true;
-
-        if (!this.isRandomMode) {
-            this.saveDailyProgress();
-            this.showDailyCompleteMessage();
-            this.isDailyCompleted = true;
-        }
-
-        document.getElementById('finalTryCount').textContent = this.tryCount;
-        
-        const headerText = this.isRandomMode ? 
-            '🎉 Congratulations! 🎉' : 
-            '🎉 Daily Puzzle Complete! 🎉';
-        
-        document.querySelector('#victoryModal .modal-header h2').textContent = headerText;
-        
-        const newGameBtn = document.getElementById('newGameAfterWin');
-        if (this.isRandomMode) {
-            newGameBtn.textContent = 'New Practice Game';
-        } else {
-            newGameBtn.textContent = 'Practice Mode';
-        }
-        
-        document.getElementById('closeVictoryBtn').onclick = () => {
-            this.hideVictoryModal();
-            this.isProcessingTurnEnd = false;
-            this.renderBoard();
-        };
-        
-        document.getElementById('copyResultBtn').onclick = () => {
-            this.shareResults();
-        };
-        
-        document.getElementById('revealBoardAfterWin').onclick = () => {
-            this.hideVictoryModal();
-            this.showAllTiles = true;
-            this.isProcessingTurnEnd = false;
-            this.renderBoard();
-        };
-        
-        document.getElementById('newGameAfterWin').onclick = () => {
-            this.hideVictoryModal();
-            if (this.isRandomMode) {
-                this.initializeBoard();
-            } else {
-                this.toggleMode();
-            }
-        };
-    }
-
-    hideVictoryModal() {
-        const modal = document.getElementById('victoryModal');
-        modal.classList.add('hidden');
-        this.isProcessingTurnEnd = false;
-    }
-
-    showHelpModal() {
-        const modal = document.getElementById('helpModal');
-        modal.classList.remove('hidden');
-    }
-
-    hideHelpModal() {
-        const modal = document.getElementById('helpModal');
-        modal.classList.add('hidden');
-    }
-
     handleTileEffect(row, col, tileValue, isGrappleEffect = false) {
         if (tileValue >= 1 && tileValue <= 5) {
             if (this.canSelectAnyGoal || tileValue === this.nextGoalTile) {
@@ -652,7 +309,6 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                 }
                 
                 if (this.collectedGoals.size === 5) {
-                    // Track final tiles revealed count
                     this.victoryStats.tilesRevealed = this.flippedTiles.size;
                     setTimeout(() => {
                         this.showVictoryModal();
@@ -878,104 +534,273 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         this.updateModeDisplay();
     }
 
-    logBoardLayout() {
-    console.log('Date:', this.todaysDate);
-    console.log('Seed:', this.dailySeed);
-    console.log('Board:');
-    this.board.forEach((row, i) => {
-        console.log(`Row ${i}:`, row.join(', '));
-    });
-    // Find warp tile position
-    for (let r = 0; r < this.board.length; r++) {
-        for (let c = 0; c < this.board[r].length; c++) {
-            if (this.board[r][c] === 10) {
-                console.log(`Warp tile at: Row ${r}, Col ${c}`);
-            }
-        }
+    saveDailyProgress() {
+        if (this.isRandomMode) return;
+        
+        const dailyData = {
+            date: this.todaysDate,
+            attempts: this.tryCount,
+            completed: this.collectedGoals.size === 5,
+            completedAttempts: this.collectedGoals.size === 5 ? this.tryCount : null
+        };
+        
+        localStorage.setItem('kuzu-maze-daily', JSON.stringify(dailyData));
     }
-    console.log('---');
-}
 
-setupMidnightReset() {
-    // Debug logging
-    console.log('Setting up midnight reset');
-    console.log('Current date:', this.getTodaysDateString());
-
-    // Calculate time to next midnight more explicitly
-    const now = new Date();
-    const midnight = new Date(
-        now.getFullYear(), 
-        now.getMonth(), 
-        now.getDate() + 1, 
-        0, 0, 0, 0
-    );
-
-    const timeUntilMidnight = midnight.getTime() - now.getTime();
-    
-    console.log('Time until midnight (ms):', timeUntilMidnight);
-    console.log('Midnight will be:', midnight.toLocaleString());
-
-    const timeoutId = setTimeout(() => {
-        console.log('🌟 MIDNIGHT RESET TRIGGERED 🌟');
-        console.log('Current time:', new Date().toLocaleString());
+    loadDailyProgress() {
+        if (this.isRandomMode) return null;
         
-        // Ensure date change
-        const wasReset = this.checkAndUpdateDate();
-        
-        if (wasReset) {
-            this.initializeBoard();
+        const savedData = localStorage.getItem('kuzu-maze-daily');
+        if (savedData) {
+            const dailyData = JSON.parse(savedData);
             
-            // Update UI to show new date
-            const dailyDateDiv = document.getElementById('dailyDate');
-            if (dailyDateDiv) {
-                dailyDateDiv.textContent = `New Daily Puzzle - ${new Date().toLocaleDateString()}`;
-                dailyDateDiv.style.color = '#10b981';
-                
-                // Revert color after a few seconds
-                setTimeout(() => {
-                    dailyDateDiv.style.color = '#374151';
-                }, 5000);
+            if (dailyData.date === this.todaysDate) {
+                if (dailyData.completed) {
+                    this.showDailyCompleteMessage();
+                }
+                return dailyData;
             }
+        }
+        return null;
+    }
+
+    loadDailyAttempts() {
+        const dailyData = this.loadDailyProgress();
+        if (dailyData && !dailyData.completed) {
+            this.tryCount = dailyData.attempts;
+        } else if (dailyData && dailyData.completed) {
+            this.tryCount = dailyData.completedAttempts;
         } else {
-            console.log('No reset needed - date unchanged');
+            this.tryCount = 1;
+        }
+    }
+
+    // Placeholder methods
+    // showDailyCompleteMessage() {}
+    showDailyCompleteMessage() {
+        if (!this.isRandomMode) {
+            document.getElementById('dailyComplete').style.display = 'block';
+        }
+    }
+
+     showVictoryModal() {
+        const modal = document.getElementById('victoryModal');
+        modal.classList.remove('hidden');
+        this.isProcessingTurnEnd = true;
+
+        if (!this.isRandomMode) {
+            this.saveDailyProgress();
+            this.showDailyCompleteMessage();
+            this.isDailyCompleted = true;
         }
 
-        // Always set up next reset
-        this.setupMidnightReset();
-    }, timeUntilMidnight);
-
-    // Store timeout ID
-    this.midnightResetTimeout = timeoutId;
-
-    // Log for verification
-    console.log('Midnight reset scheduled');
-}
-
-// Optional test method
-testMidnightReset() {
-    console.log('Current full date:', new Date());
-    console.log('Today\'s date string:', this.getTodaysDateString());
-    console.log('Stored date:', this.todaysDate);
-    console.log('Current daily seed:', this.dailySeed);
-    
-    // Force a date change check
-    const wasReset = this.checkAndUpdateDate();
-    console.log('Was reset triggered?', wasReset);
-    
-    if (wasReset) {
-        console.log('New date:', this.todaysDate);
-        console.log('New daily seed:', this.dailySeed);
+        document.getElementById('finalTryCount').textContent = this.tryCount;
+        
+        const headerText = this.isRandomMode ? 
+            '🎉 Congratulations! 🎉' : 
+            '🎉 Daily Puzzle Complete! 🎉';
+        
+        document.querySelector('#victoryModal .modal-header h2').textContent = headerText;
+        
+        const newGameBtn = document.getElementById('newGameAfterWin');
+        if (this.isRandomMode) {
+            newGameBtn.textContent = 'New Practice Game';
+        } else {
+            newGameBtn.textContent = 'Practice Mode';
+        }
+        
+        document.getElementById('closeVictoryBtn').onclick = () => {
+            this.hideVictoryModal();
+            this.isProcessingTurnEnd = false;
+            this.renderBoard();
+        };
+        
+        document.getElementById('copyResultBtn').onclick = () => {
+            this.shareResults();
+        };
+        
+        document.getElementById('revealBoardAfterWin').onclick = () => {
+            this.hideVictoryModal();
+            this.showAllTiles = true;
+            this.isProcessingTurnEnd = false;
+            this.renderBoard();
+        };
+        
+        document.getElementById('newGameAfterWin').onclick = () => {
+            this.hideVictoryModal();
+            if (this.isRandomMode) {
+                this.initializeBoard();
+            } else {
+                this.toggleMode();
+            }
+        };
     }
-}
 
-// Optional method to clear the timeout if needed
-clearMidnightReset() {
-    if (this.midnightResetTimeout) {
-        clearTimeout(this.midnightResetTimeout);
+    shareResults() {
+        // Format powers used
+        const powerNames = {
+            7: 'Extra Life',
+            8: 'Diagonal',
+            9: 'Any Order',
+            10: 'Warp',
+            6: 'Grapple'
+        };
+        
+        let powersText = "";
+        if (this.victoryStats.powersUsed.size === 0) {
+            powersText = "None - Pure skill! 💪";
+        } else {
+            const powers = Array.from(this.victoryStats.powersUsed)
+                .map(power => powerNames[power])
+                .filter(name => name)
+                .join(", ");
+            powersText = powers;
+        }
+        
+        // Create the message
+        const message = `🎉 Victory! 🎉
+📊 My Results:
+- Attempts: ${this.tryCount}
+- Tiles Revealed: ${this.victoryStats.tilesRevealed} out of 20
+- Powers Used: ${powersText}
+
+Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
+
+        // Detect if device is likely mobile/tablet
+        const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            || ('ontouchstart' in window)
+            || (navigator.maxTouchPoints > 0);
+        
+        // Use Web Share API only on mobile devices, otherwise always use clipboard
+        if (navigator.share && isMobileDevice) {
+            navigator.share({
+                title: "Kuzu's Maze Victory!",
+                text: message
+            }).catch(err => {
+                console.log('Error sharing:', err);
+                this.fallbackShare(message);
+            });
+        } else {
+            // Always use clipboard for desktop/laptop
+            this.fallbackShare(message);
+        }
     }
+
+    fallbackShare(message) {
+        try {
+            navigator.clipboard.writeText(message).then(() => {
+                const copyBtn = document.getElementById('copyResultBtn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                copyBtn.style.background = '#10b981';
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = '';
+                }, 2000);
+            });
+        } catch (err) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = message;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            const copyBtn = document.getElementById('copyResultBtn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+            }, 2000);
+        }
+    }
+
+    hideVictoryModal() {
+        const modal = document.getElementById('victoryModal');
+        modal.classList.add('hidden');
+        this.isProcessingTurnEnd = false;
+    }
+
+    showHelpModal() {
+        const modal = document.getElementById('helpModal');
+        modal.classList.remove('hidden');
+    }
+
+    hideHelpModal() {
+        const modal = document.getElementById('helpModal');
+        modal.classList.add('hidden');
+    }
+
+    handleTurnEnd(message, shouldResetBoard = false) {
+        this.isProcessingTurnEnd = true;
+        
+        this.currentPosition = null;
+        this.renderBoard();
+        
+        setTimeout(async () => {
+            if (shouldResetBoard) {
+                await this.resetTileAnimations();
+                
+                this.flippedTiles.clear();
+                this.collectedGoals.clear();
+                this.canMoveDiagonal = false;
+                this.canSelectAnyGoal = false;
+                this.hasExtraLife = false;
+                this.extraLifeUsed = false;
+                this.isWarping = false;
+                this.isGrappling = false;
+                this.grapplePosition = null;
+                this.nextGoalTile = 1;
+                this.showAllTiles = false;
+                this.tryCount++;
+                
+                // Reset victory stats
+                this.victoryStats = {
+                    powersUsed: new Set(),
+                    tilesRevealed: 0
+                };
+                
+                this.saveDailyProgress();
+            }
+            this.isProcessingTurnEnd = false;
+            this.updateGameState();
+            this.renderBoard();
+        }, 1500);
+    }
+
+    async resetTileAnimations() {
+    const tilesToReset = Array.from(this.flippedTiles).map(pos => {
+        const [row, col] = pos.split('-').map(Number);
+        return { row, col, element: document.querySelector(`[data-position="${row}-${col}"]`) };
+    }).filter(tile => tile.element);
+
+    const resetPromises = tilesToReset.map(({ row, col, element }) => {
+        return new Promise((resolve) => {
+            element.classList.add('resetting');
+            
+            setTimeout(() => {
+                const backFace = element.querySelector('.tile-face-back img');
+                if (backFace) {
+                    backFace.src = this.getTileImage('unflipped');
+                }
+            }, 200);
+
+            setTimeout(() => {
+                element.classList.remove('resetting');
+                resolve();
+            }, 400);
+        });
+    });
+
+    await Promise.all(resetPromises);
 }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new TileGame();
+// Async initialization
+document.addEventListener('DOMContentLoaded', async () => {
+    const game = new TileGame();
+    await game.initialize();
 });
