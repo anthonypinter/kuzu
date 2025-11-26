@@ -212,6 +212,12 @@ h1 {
     outline-offset: 2px;
 }
 
+.tile.winning-path {
+    outline: 3px solid #fbbf24;
+    outline-offset: 2px;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+}
+
 .tile.revealed {
     background-color: var(--revealed-color, var(--gray-200));
 }
@@ -560,3 +566,4 @@ h3 {
         flex-direction: row;
     }
 }
+

@@ -31,10 +31,165 @@ class TileGame {
             tilesRevealed: 0
         };
 
+        // Stored game result for re-opening victory modal
+        this.storedGameResult = null;
+
+        // Streak tracking
+        this.currentStreak = 0;
+        this.bestStreak = 0;
+        
+        // Winning path tracking
+        this.winningPath = [];
+
         // Board Management
         this.todaysDate = this.getTodaysDateString();
         this.isRandomMode = false;
         this.boardDataUrl = 'boards.json';
+    }
+
+    // New method to store game result for potential re-opening of victory modal
+    // New method to store game result for potential re-opening of victory modal
+    storeGameResult() {
+        const powerNames = {
+            7: 'Extra Life',
+            8: 'Diagonal',
+            9: 'Any Order',
+            10: 'Warp',
+            6: 'Grapple'
+        };
+        
+        let powersText = "";
+        if (this.victoryStats.powersUsed.size === 0) {
+            powersText = "None - Pure skill! 💪";
+        } else {
+            const powers = Array.from(this.victoryStats.powersUsed)
+                .map(power => powerNames[power])
+                .filter(name => name)
+                .join(", ");
+            powersText = powers;
+        }
+
+        const gameResult = {
+            tryCount: this.tryCount,
+            tilesRevealed: this.victoryStats.tilesRevealed,
+            powersUsed: powersText,
+            mode: this.isRandomMode ? 'Practice' : 'Daily',
+            date: new Date().toISOString(),
+            currentStreak: this.currentStreak,
+            bestStreak: this.bestStreak
+        };
+
+        // Store in localStorage
+        try {
+            localStorage.setItem('kuzuMazeLastGameResult', JSON.stringify(gameResult));
+        } catch (e) {
+            console.error('Failed to store game result in localStorage', e);
+        }
+
+        // Also set the instance property
+        this.storedGameResult = gameResult;
+
+        return gameResult;
+    }
+
+    // Method to re-open victory modal with stored result
+    reopenVictoryModal() {
+        if (!this.storedGameResult) {
+            console.log('No stored game result to reopen');
+            return;
+        }
+
+        const modal = document.getElementById('victoryModal');
+        modal.classList.remove('hidden');
+
+        // Set final try count
+        document.getElementById('finalTryCount').textContent = this.storedGameResult.tryCount;
+        
+        // Set header text based on mode
+        const headerText = this.storedGameResult.mode === 'Practice' ? 
+            'Congratulations!' : 
+            'Daily Puzzle Complete!';
+        
+        document.querySelector('#victoryModal .modal-header h2').textContent = headerText;
+        
+        // Display streak and game stats in modal
+        const resultElement = document.getElementById('victoryResultSummary');
+        if (resultElement) {
+            let htmlContent = '';
+            
+            // Show streak info if available and mode is Daily and completed in under 100 attempts
+            if (this.storedGameResult.mode === 'Daily' && 
+                this.storedGameResult.tryCount < 100 && 
+                this.storedGameResult.currentStreak !== undefined) {
+                const streakEmoji = this.storedGameResult.currentStreak >= 7 ? '🔥' : '⭐';
+                htmlContent = `
+                    <p style="font-size: 1.1rem; margin: 0.5rem 0;">
+                        ${streakEmoji} Current Streak: <strong>${this.storedGameResult.currentStreak}</strong> day${this.storedGameResult.currentStreak !== 1 ? 's' : ''}
+                    </p>
+                    <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
+                        Best Streak: ${this.storedGameResult.bestStreak} day${this.storedGameResult.bestStreak !== 1 ? 's' : ''}
+                    </p>
+                `;
+            } else if (this.storedGameResult.tryCount >= 100) {
+                htmlContent = `
+                    <p style="font-size: 0.9rem; color: #6b7280; margin: 0.5rem 0;">
+                        Complete in under 100 attempts to maintain your streak!
+                    </p>
+                `;
+            }
+            
+            resultElement.innerHTML = htmlContent;
+        }
+
+        // Get all modal buttons
+        const closeBtn = document.getElementById('closeVictoryBtn');
+        const copyBtn = document.getElementById('copyResultBtn');
+
+        // Ensure buttons are enabled
+        closeBtn.disabled = false;
+        copyBtn.disabled = false;
+
+        // Configure modal buttons
+        closeBtn.onclick = () => {
+            this.hideVictoryModal();
+        };
+
+        document.getElementById('copyResultBtn').onclick = () => {
+            // Create a shareable message using stored result
+            const shareMessage = `🎉 Victory! 🎉
+📊 My Results:
+- Mode: ${this.storedGameResult.mode}
+- Attempts: ${this.storedGameResult.tryCount}
+- Tiles Revealed: ${this.storedGameResult.tilesRevealed} out of 20
+- Powers Used: ${this.storedGameResult.powersUsed}
+
+Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
+
+            // Use existing share method
+            this.shareMessage(shareMessage);
+        };
+    }
+
+    // Helper method to share results
+    shareMessage(message) {
+        // Detect if device is likely mobile/tablet
+        const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            || ('ontouchstart' in window)
+            || (navigator.maxTouchPoints > 0);
+        
+        // Use Web Share API only on mobile devices, otherwise always use clipboard
+        if (navigator.share && isMobileDevice) {
+            navigator.share({
+                title: "Kuzu's Maze Victory!",
+                text: message
+            }).catch(err => {
+                console.log('Error sharing:', err);
+                this.fallbackShare(message);
+            });
+        } else {
+            // Always use clipboard for desktop/laptop
+            this.fallbackShare(message);
+        }
     }
 
     // Async Initialization Method
@@ -44,6 +199,46 @@ class TileGame {
         this.initializeBoard();
         this.setupEventListeners();
         this.loadDailyProgress();
+        this.loadStreakData(); // Load streak data
+        
+        // Retrieve any stored game result
+        const storedResult = localStorage.getItem('kuzuMazeLastGameResult');
+        if (storedResult) {
+            try {
+                this.storedGameResult = JSON.parse(storedResult);
+            } catch (e) {
+                console.error('Failed to parse stored game result', e);
+            }
+        }
+        
+        // Setup button for reopening victory modal
+        this.setupVictoryModalReopening();
+        
+        // Auto-show victory modal if today's daily puzzle is completed
+        this.checkAndShowVictoryModal();
+    }
+    
+    // Check if today's puzzle is completed and auto-show victory modal
+    checkAndShowVictoryModal() {
+        if (this.isRandomMode) return;
+        
+        const dailyData = this.loadDailyProgress();
+        const storedResult = this.storedGameResult;
+        
+        // Check if:
+        // 1. Today's daily puzzle is completed
+        // 2. We have a stored game result
+        // 3. The stored result is from today
+        if (dailyData && dailyData.completed && storedResult) {
+            const resultDate = new Date(storedResult.date).toISOString().split('T')[0];
+            
+            if (resultDate === this.todaysDate) {
+                // Auto-show the victory modal
+                setTimeout(() => {
+                    this.reopenVictoryModal();
+                }, 500); // Small delay for smooth UX
+            }
+        }
     }
 
     // Modify the loadBoard method to fetch from JSON
@@ -86,11 +281,6 @@ class TileGame {
         return boardForToday;
     }
 
-    // getTodaysDateString() {
-    //     const today = new Date();
-    //     return today.toISOString().split('T')[0];
-    // }
-
     getTodaysDateString() {
     const today = new Date();
     const year = today.getFullYear();
@@ -125,6 +315,9 @@ class TileGame {
             powersUsed: new Set(),
             tilesRevealed: 0
         };
+        
+        // Reset winning path
+        this.winningPath = [];
 
         // Update Try Count
         if (!this.isRandomMode) {
@@ -136,6 +329,11 @@ class TileGame {
                 this.isProcessingTurnEnd = true;
             } else {
                 this.isDailyCompleted = false;
+                // Try to load saved turn state
+                const turnLoaded = this.loadTurnState();
+                if (turnLoaded) {
+                    console.log('Restored previous turn state');
+                }
             }
         } else {
             this.tryCount = 1;
@@ -310,6 +508,14 @@ class TileGame {
                 
                 if (this.collectedGoals.size === 5) {
                     this.victoryStats.tilesRevealed = this.flippedTiles.size;
+                    
+                    // Clear turn state on victory
+                    this.clearTurnState();
+                    
+                    // Automatically reveal all tiles and show winning path
+                    this.showAllTiles = true;
+                    this.renderBoard();
+                    
                     setTimeout(() => {
                         this.showVictoryModal();
                     }, 500);
@@ -376,6 +582,9 @@ class TileGame {
         const tileValue = this.board[row][col];
         this.flippedTiles.add(`${row}-${col}`);
         
+        // Add to winning path tracking
+        this.winningPath.push(`${row}-${col}`);
+        
         await this.flipTile(row, col);
      
         if (this.isWarping) {
@@ -384,6 +593,11 @@ class TileGame {
             this.handleTileEffect(row, col, tileValue);
             this.updateGameState();
             this.renderBoard();
+            
+            // Save turn state after warp move
+            if (this.collectedGoals.size < 5) {
+                this.saveTurnState();
+            }
             return;
         }
      
@@ -411,6 +625,11 @@ class TileGame {
             }
             this.updateGameState();
             this.renderBoard();
+            
+            // Save turn state after grapple move
+            if (this.collectedGoals.size < 5) {
+                this.saveTurnState();
+            }
             return;
         }
      
@@ -418,6 +637,11 @@ class TileGame {
         this.handleTileEffect(row, col, tileValue);
         this.updateGameState();
         this.renderBoard();
+        
+        // Save turn state after each move (unless won)
+        if (this.collectedGoals.size < 5) {
+            this.saveTurnState();
+        }
     }
 
     getNextRequiredGoal() {
@@ -503,6 +727,11 @@ class TileGame {
                     this.currentPosition[1] === colIndex) {
                     tileElement.classList.add('current');
                 }
+                
+                // Highlight tiles that were part of the winning path
+                if (this.showAllTiles && this.winningPath.includes(`${rowIndex}-${colIndex}`)) {
+                    tileElement.classList.add('winning-path');
+                }
     
                 tileElement.onclick = () => this.handleTileClick(rowIndex, colIndex);
                 gameBoard.appendChild(tileElement);
@@ -546,6 +775,85 @@ class TileGame {
         
         localStorage.setItem('kuzu-maze-daily', JSON.stringify(dailyData));
     }
+    
+    saveTurnState() {
+        if (this.isRandomMode) return;
+        
+        // Don't save if puzzle is completed or if in the middle of processing
+        if (this.isDailyCompleted || this.isProcessingTurnEnd) return;
+        
+        const turnState = {
+            date: this.todaysDate,
+            tryCount: this.tryCount,
+            flippedTiles: Array.from(this.flippedTiles),
+            winningPath: this.winningPath,
+            currentPosition: this.currentPosition,
+            collectedGoals: Array.from(this.collectedGoals),
+            nextGoalTile: this.nextGoalTile,
+            canMoveDiagonal: this.canMoveDiagonal,
+            hasExtraLife: this.hasExtraLife,
+            extraLifeUsed: this.extraLifeUsed,
+            canSelectAnyGoal: this.canSelectAnyGoal,
+            isWarping: this.isWarping,
+            isGrappling: this.isGrappling,
+            grapplePosition: this.grapplePosition,
+            victoryStats: {
+                powersUsed: Array.from(this.victoryStats.powersUsed),
+                tilesRevealed: this.victoryStats.tilesRevealed
+            }
+        };
+        
+        localStorage.setItem('kuzu-maze-turn', JSON.stringify(turnState));
+    }
+    
+    loadTurnState() {
+        if (this.isRandomMode) return false;
+        
+        try {
+            const savedTurn = localStorage.getItem('kuzu-maze-turn');
+            if (!savedTurn) return false;
+            
+            const turnState = JSON.parse(savedTurn);
+            
+            // Only load if it's from today
+            if (turnState.date !== this.todaysDate) {
+                this.clearTurnState();
+                return false;
+            }
+            
+            // Restore game state
+            this.tryCount = turnState.tryCount;
+            this.flippedTiles = new Set(turnState.flippedTiles);
+            this.winningPath = turnState.winningPath || [];
+            this.currentPosition = turnState.currentPosition;
+            this.collectedGoals = new Set(turnState.collectedGoals);
+            this.nextGoalTile = turnState.nextGoalTile;
+            this.canMoveDiagonal = turnState.canMoveDiagonal;
+            this.hasExtraLife = turnState.hasExtraLife;
+            this.extraLifeUsed = turnState.extraLifeUsed;
+            this.canSelectAnyGoal = turnState.canSelectAnyGoal;
+            this.isWarping = turnState.isWarping;
+            this.isGrappling = turnState.isGrappling;
+            this.grapplePosition = turnState.grapplePosition;
+            
+            if (turnState.victoryStats) {
+                this.victoryStats = {
+                    powersUsed: new Set(turnState.victoryStats.powersUsed),
+                    tilesRevealed: turnState.victoryStats.tilesRevealed
+                };
+            }
+            
+            return true;
+        } catch (e) {
+            console.error('Failed to load turn state', e);
+            return false;
+        }
+    }
+    
+    clearTurnState() {
+        if (this.isRandomMode) return;
+        localStorage.removeItem('kuzu-maze-turn');
+    }
 
     loadDailyProgress() {
         if (this.isRandomMode) return null;
@@ -575,6 +883,82 @@ class TileGame {
         }
     }
 
+    // Streak management methods
+    loadStreakData() {
+        if (this.isRandomMode) return;
+        
+        try {
+            const streakData = localStorage.getItem('kuzu-maze-streak');
+            if (streakData) {
+                const data = JSON.parse(streakData);
+                this.currentStreak = data.currentStreak || 0;
+                this.bestStreak = data.bestStreak || 0;
+                return data;
+            }
+        } catch (e) {
+            console.error('Failed to load streak data', e);
+        }
+        
+        this.currentStreak = 0;
+        this.bestStreak = 0;
+        return null;
+    }
+
+    saveStreakData() {
+        if (this.isRandomMode) return;
+        
+        try {
+            const streakData = {
+                currentStreak: this.currentStreak,
+                bestStreak: this.bestStreak,
+                lastCompletedDate: this.todaysDate
+            };
+            localStorage.setItem('kuzu-maze-streak', JSON.stringify(streakData));
+        } catch (e) {
+            console.error('Failed to save streak data', e);
+        }
+    }
+
+    updateStreak() {
+        if (this.isRandomMode || this.tryCount >= 100) return;
+        
+        const streakData = this.loadStreakData();
+        
+        if (!streakData || !streakData.lastCompletedDate) {
+            // First time completing
+            this.currentStreak = 1;
+            this.bestStreak = 1;
+        } else {
+            const lastDate = new Date(streakData.lastCompletedDate);
+            const today = new Date(this.todaysDate);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            const lastDateStr = lastDate.toISOString().split('T')[0];
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            if (lastDateStr === yesterdayStr) {
+                // Consecutive day - increment streak
+                this.currentStreak++;
+                if (this.currentStreak > this.bestStreak) {
+                    this.bestStreak = this.currentStreak;
+                }
+            } else if (lastDateStr === this.todaysDate) {
+                // Already completed today - keep current streak
+                this.currentStreak = streakData.currentStreak;
+                this.bestStreak = streakData.bestStreak;
+            } else {
+                // Streak broken - reset to 1
+                this.currentStreak = 1;
+                if (this.bestStreak === 0) {
+                    this.bestStreak = 1;
+                }
+            }
+        }
+        
+        this.saveStreakData();
+    }
+
     // Placeholder methods
     // showDailyCompleteMessage() {}
     showDailyCompleteMessage() {
@@ -589,24 +973,44 @@ class TileGame {
         this.isProcessingTurnEnd = true;
 
         if (!this.isRandomMode) {
+            this.updateStreak(); // Update streak before saving
             this.saveDailyProgress();
             this.showDailyCompleteMessage();
             this.isDailyCompleted = true;
         }
 
+        // Store the game result for potential re-opening
+        this.storeGameResult();
+
+        // Setup the reopen button
+        this.setupVictoryModalReopening();
+
         document.getElementById('finalTryCount').textContent = this.tryCount;
         
         const headerText = this.isRandomMode ? 
-            '🎉 Congratulations! 🎉' : 
-            '🎉 Daily Puzzle Complete! 🎉';
+            'Congratulations!' : 
+            'Daily Puzzle Complete!';
         
         document.querySelector('#victoryModal .modal-header h2').textContent = headerText;
         
-        const newGameBtn = document.getElementById('newGameAfterWin');
-        if (this.isRandomMode) {
-            newGameBtn.textContent = 'New Practice Game';
-        } else {
-            newGameBtn.textContent = 'Practice Mode';
+        // Display streak information in victory modal
+        const resultSummary = document.getElementById('victoryResultSummary');
+        if (resultSummary && !this.isRandomMode && this.tryCount < 100) {
+            const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
+            resultSummary.innerHTML = `
+                <p style="font-size: 1.1rem; margin: 0.5rem 0;">
+                    ${streakEmoji} Current Streak: <strong>${this.currentStreak}</strong> day${this.currentStreak !== 1 ? 's' : ''}
+                </p>
+                <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
+                    Best Streak: ${this.bestStreak} day${this.bestStreak !== 1 ? 's' : ''}
+                </p>
+            `;
+        } else if (resultSummary && this.tryCount >= 100) {
+            resultSummary.innerHTML = `
+                <p style="font-size: 0.9rem; color: #6b7280; margin: 0.5rem 0;">
+                    Complete in under 100 attempts to maintain your streak!
+                </p>
+            `;
         }
         
         document.getElementById('closeVictoryBtn').onclick = () => {
@@ -617,22 +1021,6 @@ class TileGame {
         
         document.getElementById('copyResultBtn').onclick = () => {
             this.shareResults();
-        };
-        
-        document.getElementById('revealBoardAfterWin').onclick = () => {
-            this.hideVictoryModal();
-            this.showAllTiles = true;
-            this.isProcessingTurnEnd = false;
-            this.renderBoard();
-        };
-        
-        document.getElementById('newGameAfterWin').onclick = () => {
-            this.hideVictoryModal();
-            if (this.isRandomMode) {
-                this.initializeBoard();
-            } else {
-                this.toggleMode();
-            }
         };
     }
 
@@ -648,7 +1036,7 @@ class TileGame {
         
         let powersText = "";
         if (this.victoryStats.powersUsed.size === 0) {
-            powersText = "None - Pure skill! 💪";
+            powersText = "None - Pure skill!";
         } else {
             const powers = Array.from(this.victoryStats.powersUsed)
                 .map(power => powerNames[power])
@@ -658,11 +1046,20 @@ class TileGame {
         }
         
         // Create the message
-        const message = `🎉 Victory! 🎉
+        let message = `Victory!
 📊 My Results:
 - Attempts: ${this.tryCount}
 - Tiles Revealed: ${this.victoryStats.tilesRevealed} out of 20
-- Powers Used: ${powersText}
+- Powers Used: ${powersText}`;
+
+        // Add streak info if in Daily mode and completed in under 100 attempts
+        if (!this.isRandomMode && this.tryCount < 100) {
+            const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
+            message += `
+- ${streakEmoji} Streak: ${this.currentStreak} day${this.currentStreak !== 1 ? 's' : ''}`;
+        }
+
+        message += `
 
 Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
 
@@ -721,7 +1118,52 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
     hideVictoryModal() {
         const modal = document.getElementById('victoryModal');
         modal.classList.add('hidden');
+        // Remove the processing turn end flag
         this.isProcessingTurnEnd = false;
+    }
+
+    // New method to handle modal reopening
+    setupVictoryModalReopening() {
+        // Remove any existing reopen buttons first
+        const existingButton = document.getElementById('viewLastResultBtn');
+        if (existingButton) {
+            existingButton.remove();
+        }
+
+        // Check localStorage directly
+        const storedResult = localStorage.getItem('kuzuMazeLastGameResult');
+        
+        // If no stored game result, do nothing
+        if (!storedResult) return null;
+
+        // Create a new button to reopen the victory modal
+        const reopenButton = document.createElement('button');
+        reopenButton.id = 'viewLastResultBtn';
+        reopenButton.textContent = 'View Last Result';
+        reopenButton.className = 'control-btn';
+        
+        // Always make the button visible
+        reopenButton.style.display = 'block';
+        
+        // Add click event to reopen the modal
+        reopenButton.onclick = () => {
+            // Ensure we parse the stored result
+            try {
+                this.storedGameResult = JSON.parse(storedResult);
+                this.reopenVictoryModal();
+            } catch (e) {
+                console.error('Failed to parse stored game result', e);
+            }
+        };
+        
+        // Add to the header controls
+        const header = document.querySelector('header .controls');
+        if (header) {
+            // Append the button at the end of the controls
+            header.appendChild(reopenButton);
+        }
+
+        return reopenButton;
     }
 
     showHelpModal() {
@@ -736,6 +1178,9 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
 
     handleTurnEnd(message, shouldResetBoard = false) {
         this.isProcessingTurnEnd = true;
+        
+        // Clear turn state when turn ends
+        this.clearTurnState();
         
         this.currentPosition = null;
         this.renderBoard();
@@ -762,6 +1207,9 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                     powersUsed: new Set(),
                     tilesRevealed: 0
                 };
+                
+                // Reset winning path
+                this.winningPath = [];
                 
                 this.saveDailyProgress();
             }
