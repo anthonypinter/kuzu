@@ -995,7 +995,7 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         
         // Display streak information in victory modal
         const resultSummary = document.getElementById('victoryResultSummary');
-        if (resultSummary && !this.isRandomMode && this.tryCount < 100) {
+        if (resultSummary && !this.isRandomMode && this.tryCount < 20) {
             const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
             resultSummary.innerHTML = `
                 <p style="font-size: 1.1rem; margin: 0.5rem 0;">
