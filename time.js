@@ -1004,6 +1004,9 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                 <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
                     Best Streak: ${this.bestStreak} day${this.bestStreak !== 1 ? 's' : ''}
                 </p>
+                <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
+                    Win in 20 or less attempts to add to your streak!
+                </p>
             `;
         } else if (resultSummary && this.tryCount >= 100) {
             resultSummary.innerHTML = `
