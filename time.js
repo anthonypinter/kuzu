@@ -34,6 +34,9 @@ class TileGame {
         // Stored game result for re-opening victory modal
         this.storedGameResult = null;
 
+        // Flag to track if victory modal was shown (prevent duplicate shows)
+        this.victoryModalShown = false;
+
         // Streak tracking
         this.currentStreak = 0;
         this.bestStreak = 0;
@@ -74,9 +77,10 @@ class TileGame {
             tilesRevealed: this.victoryStats.tilesRevealed,
             powersUsed: powersText,
             mode: this.isRandomMode ? 'Practice' : 'Daily',
-            date: new Date().toISOString(),
+            date: this.todaysDate, // Use same format as todaysDate (YYYY-MM-DD)
             currentStreak: this.currentStreak,
-            bestStreak: this.bestStreak
+            bestStreak: this.bestStreak,
+            winningPath: this.winningPath // Save winning path for golden borders
         };
 
         // Store in localStorage
@@ -98,6 +102,9 @@ class TileGame {
             console.log('No stored game result to reopen');
             return;
         }
+        
+        // Mark that we've shown the modal
+        this.victoryModalShown = true;
 
         const modal = document.getElementById('victoryModal');
         modal.classList.remove('hidden');
@@ -216,28 +223,65 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         
         // Auto-show victory modal if today's daily puzzle is completed
         this.checkAndShowVictoryModal();
+        
+        // Fallback check after a delay (in case first check was too early)
+        setTimeout(() => {
+            if (!this.victoryModalShown) {
+                console.log('Running fallback victory modal check...');
+                this.checkAndShowVictoryModal();
+            }
+        }, 1000);
     }
     
     // Check if today's puzzle is completed and auto-show victory modal
     checkAndShowVictoryModal() {
         if (this.isRandomMode) return;
         
-        const dailyData = this.loadDailyProgress();
-        const storedResult = this.storedGameResult;
+        // Direct check of localStorage instead of relying on method
+        const savedData = localStorage.getItem('kuzu-maze-daily');
+        if (!savedData) {
+            console.log('No daily data found');
+            return;
+        }
+        
+        let dailyData;
+        try {
+            dailyData = JSON.parse(savedData);
+        } catch (e) {
+            console.error('Failed to parse daily data', e);
+            return;
+        }
+        
+        console.log('Daily data:', dailyData);
+        console.log('Today\'s date:', this.todaysDate);
+        console.log('Stored game result:', this.storedGameResult);
         
         // Check if:
         // 1. Today's daily puzzle is completed
         // 2. We have a stored game result
         // 3. The stored result is from today
-        if (dailyData && dailyData.completed && storedResult) {
-            const resultDate = new Date(storedResult.date).toISOString().split('T')[0];
+        if (dailyData && dailyData.date === this.todaysDate && dailyData.completed) {
+            console.log('Puzzle completed, checking for stored result...');
             
-            if (resultDate === this.todaysDate) {
-                // Auto-show the victory modal
-                setTimeout(() => {
-                    this.reopenVictoryModal();
-                }, 500); // Small delay for smooth UX
+            if (this.storedGameResult) {
+                // Both dates are now in YYYY-MM-DD format
+                const resultDate = this.storedGameResult.date;
+                console.log('Result date:', resultDate);
+                
+                if (resultDate === this.todaysDate) {
+                    console.log('Auto-showing victory modal!');
+                    // Auto-show the victory modal
+                    setTimeout(() => {
+                        this.reopenVictoryModal();
+                    }, 500); // Small delay for smooth UX
+                } else {
+                    console.log('Result date mismatch:', resultDate, '!==', this.todaysDate);
+                }
+            } else {
+                console.log('No stored game result found');
             }
+        } else {
+            console.log('Conditions not met for auto-popup');
         }
     }
 
@@ -327,6 +371,20 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                 this.isDailyCompleted = true;
                 this.showAllTiles = true;
                 this.isProcessingTurnEnd = true;
+                
+                // Load winning path from stored game result
+                const storedResult = localStorage.getItem('kuzuMazeLastGameResult');
+                if (storedResult) {
+                    try {
+                        const gameResult = JSON.parse(storedResult);
+                        if (gameResult.winningPath) {
+                            this.winningPath = gameResult.winningPath;
+                            console.log('Restored winning path with', this.winningPath.length, 'tiles');
+                        }
+                    } catch (e) {
+                        console.error('Failed to load winning path from game result', e);
+                    }
+                }
             } else {
                 this.isDailyCompleted = false;
                 // Try to load saved turn state
@@ -995,7 +1053,7 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         
         // Display streak information in victory modal
         const resultSummary = document.getElementById('victoryResultSummary');
-        if (resultSummary && !this.isRandomMode && this.tryCount < 20) {
+        if (resultSummary && !this.isRandomMode && this.tryCount < 100) {
             const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
             resultSummary.innerHTML = `
                 <p style="font-size: 1.1rem; margin: 0.5rem 0;">
@@ -1003,9 +1061,6 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                 </p>
                 <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
                     Best Streak: ${this.bestStreak} day${this.bestStreak !== 1 ? 's' : ''}
-                </p>
-                <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
-                    Win in 20 or less attempts to add to your streak!
                 </p>
             `;
         } else if (resultSummary && this.tryCount >= 100) {
@@ -1254,4 +1309,8 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
 document.addEventListener('DOMContentLoaded', async () => {
     const game = new TileGame();
     await game.initialize();
+    
+    // Make game globally accessible for debugging
+    window.game = game;
+    console.log('Game initialized. Access via window.game');
 });
