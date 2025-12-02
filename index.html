@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kuzu's Maze</title>
+    
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS Specific Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Kuzu's Maze">
+    <link rel="apple-touch-icon" href="src/death.svg">
+    
+    <!-- Standard Favicon -->
+    <link rel="icon" type="image/svg+xml" href="src/death.svg">
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#ffffff">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
@@ -65,7 +81,7 @@
                 </div>
 
                 <div id="dailyComplete" class="game-message" style="display: none;">
-                    <p>🎉 Today's puzzle completed! 🎉</p>
+                    <p>ðŸŽ‰ Today's puzzle completed! ðŸŽ‰</p>
                     <p>Come back tomorrow for a new challenge!</p>
                     
                 </div>
@@ -74,7 +90,7 @@
             <div id="victoryModal" class="modal hidden">
                 <div class="modal-content">
                     <div class="modal-header" style="justify-content: center;">
-                        <h2 style="text-align: center;">🎉 Congratulations! 🎉</h2>
+                        <h2 style="text-align: center;">ðŸŽ‰ Congratulations! ðŸŽ‰</h2>
                     </div>
                     <div class="modal-body">
                         <p style="text-align: center;">You've completed the sequence!</p>
@@ -83,8 +99,8 @@
                     <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
                         <button id="closeVictoryBtn" class="control-btn">Close</button>
                         <button id="copyResultBtn" class="control-btn">Copy Result</button>
-                        <!-- <button id="revealBoardAfterWin" class="control-btn">Reveal Full Board</button> -->
-                        <!-- <button id="newGameAfterWin" class="control-btn">New Game</button> -->
+                        <button id="revealBoardAfterWin" class="control-btn">Reveal Full Board</button>
+                        <button id="newGameAfterWin" class="control-btn">New Game</button>
                         <div id="victoryResultSummary" style="margin: 1rem 0; text-align: center;"></div>
                     </div>
                 </div>
@@ -190,4 +206,3 @@
     <script src="time.js"></script>
 </body>
 </html>
-

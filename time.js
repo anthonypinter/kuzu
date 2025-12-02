@@ -124,9 +124,9 @@ class TileGame {
         if (resultElement) {
             let htmlContent = '';
             
-            // Show streak info if available and mode is Daily and completed in under 100 attempts
+            // Show streak info if available and mode is Daily and completed in 20 or fewer attempts
             if (this.storedGameResult.mode === 'Daily' && 
-                this.storedGameResult.tryCount < 100 && 
+                this.storedGameResult.tryCount <= 20 && 
                 this.storedGameResult.currentStreak !== undefined) {
                 const streakEmoji = this.storedGameResult.currentStreak >= 7 ? '🔥' : '⭐';
                 htmlContent = `
@@ -137,10 +137,10 @@ class TileGame {
                         Best Streak: ${this.storedGameResult.bestStreak} day${this.storedGameResult.bestStreak !== 1 ? 's' : ''}
                     </p>
                 `;
-            } else if (this.storedGameResult.tryCount >= 100) {
+            } else if (this.storedGameResult.tryCount > 20) {
                 htmlContent = `
                     <p style="font-size: 0.9rem; color: #6b7280; margin: 0.5rem 0;">
-                        Complete in under 100 attempts to maintain your streak!
+                        Complete in 20 or fewer attempts to maintain your streak!
                     </p>
                 `;
             }
@@ -148,33 +148,8 @@ class TileGame {
             resultElement.innerHTML = htmlContent;
         }
 
-        // Get all modal buttons
-        const closeBtn = document.getElementById('closeVictoryBtn');
-        const copyBtn = document.getElementById('copyResultBtn');
-
-        // Ensure buttons are enabled
-        closeBtn.disabled = false;
-        copyBtn.disabled = false;
-
-        // Configure modal buttons
-        closeBtn.onclick = () => {
-            this.hideVictoryModal();
-        };
-
-        document.getElementById('copyResultBtn').onclick = () => {
-            // Create a shareable message using stored result
-            const shareMessage = `🎉 Victory! 🎉
-📊 My Results:
-- Mode: ${this.storedGameResult.mode}
-- Attempts: ${this.storedGameResult.tryCount}
-- Tiles Revealed: ${this.storedGameResult.tilesRevealed} out of 20
-- Powers Used: ${this.storedGameResult.powersUsed}
-
-Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
-
-            // Use existing share method
-            this.shareMessage(shareMessage);
-        };
+        // DON'T set up button handlers here - they should be set once in showVictoryModal or setupEventListeners
+        // The copy result button shareMessage is set up in setupVictoryModalButtons
     }
 
     // Helper method to share results
@@ -805,7 +780,7 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         };
 
         document.getElementById('helpBtn').onclick = () => {
-            this.showHelpModal();
+            this.toggleHelpModal();
         };
 
         document.getElementById('closeHelpBtn').onclick = () => {
@@ -815,6 +790,33 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         document.getElementById('helpModal').onclick = (e) => {
             if (e.target.id === 'helpModal') {
                 this.hideHelpModal();
+            }
+        };
+        
+        // Set up victory modal buttons ONCE
+        document.getElementById('closeVictoryBtn').onclick = () => {
+            this.hideVictoryModal();
+            if (this.isProcessingTurnEnd) {
+                this.isProcessingTurnEnd = false;
+                this.renderBoard();
+            }
+        };
+        
+        document.getElementById('copyResultBtn').onclick = () => {
+            // Check if we have stored result (for reopened modal)
+            if (this.storedGameResult) {
+                const shareMessage = `🎉 Victory! 🎉
+📊 My Results:
+- Mode: ${this.storedGameResult.mode}
+- Attempts: ${this.storedGameResult.tryCount}
+- Tiles Revealed: ${this.storedGameResult.tilesRevealed} out of 20
+- Powers Used: ${this.storedGameResult.powersUsed}
+
+Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
+                this.shareMessage(shareMessage);
+            } else {
+                // Use current game stats (for initial victory)
+                this.shareResults();
             }
         };
         
@@ -978,7 +980,7 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
     }
 
     updateStreak() {
-        if (this.isRandomMode || this.tryCount >= 100) return;
+        if (this.isRandomMode || this.tryCount > 20) return;
         
         const streakData = this.loadStreakData();
         
@@ -1053,7 +1055,7 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         
         // Display streak information in victory modal
         const resultSummary = document.getElementById('victoryResultSummary');
-        if (resultSummary && !this.isRandomMode && this.tryCount < 100) {
+        if (resultSummary && !this.isRandomMode && this.tryCount <= 20) {
             const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
             resultSummary.innerHTML = `
                 <p style="font-size: 1.1rem; margin: 0.5rem 0;">
@@ -1063,23 +1065,15 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                     Best Streak: ${this.bestStreak} day${this.bestStreak !== 1 ? 's' : ''}
                 </p>
             `;
-        } else if (resultSummary && this.tryCount >= 100) {
+        } else if (resultSummary && this.tryCount > 20) {
             resultSummary.innerHTML = `
                 <p style="font-size: 0.9rem; color: #6b7280; margin: 0.5rem 0;">
-                    Complete in under 100 attempts to maintain your streak!
+                    Complete in 20 or fewer attempts to maintain your streak!
                 </p>
             `;
         }
         
-        document.getElementById('closeVictoryBtn').onclick = () => {
-            this.hideVictoryModal();
-            this.isProcessingTurnEnd = false;
-            this.renderBoard();
-        };
-        
-        document.getElementById('copyResultBtn').onclick = () => {
-            this.shareResults();
-        };
+        // Button handlers are set up once in setupEventListeners, not here
     }
 
     shareResults() {
@@ -1110,8 +1104,8 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
 - Tiles Revealed: ${this.victoryStats.tilesRevealed} out of 20
 - Powers Used: ${powersText}`;
 
-        // Add streak info if in Daily mode and completed in under 100 attempts
-        if (!this.isRandomMode && this.tryCount < 100) {
+        // Add streak info if in Daily mode and completed in 20 or fewer attempts
+        if (!this.isRandomMode && this.tryCount <= 20) {
             const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
             message += `
 - ${streakEmoji} Streak: ${this.currentStreak} day${this.currentStreak !== 1 ? 's' : ''}`;
@@ -1203,14 +1197,22 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         // Always make the button visible
         reopenButton.style.display = 'block';
         
-        // Add click event to reopen the modal
+        // Add click event to toggle the modal
         reopenButton.onclick = () => {
-            // Ensure we parse the stored result
-            try {
-                this.storedGameResult = JSON.parse(storedResult);
-                this.reopenVictoryModal();
-            } catch (e) {
-                console.error('Failed to parse stored game result', e);
+            const modal = document.getElementById('victoryModal');
+            const isHidden = modal.classList.contains('hidden');
+            
+            if (isHidden) {
+                // Modal is hidden, show it
+                try {
+                    this.storedGameResult = JSON.parse(storedResult);
+                    this.reopenVictoryModal();
+                } catch (e) {
+                    console.error('Failed to parse stored game result', e);
+                }
+            } else {
+                // Modal is visible, just hide it (don't reset flag)
+                modal.classList.add('hidden');
             }
         };
         
@@ -1232,6 +1234,15 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
     hideHelpModal() {
         const modal = document.getElementById('helpModal');
         modal.classList.add('hidden');
+    }
+
+    toggleHelpModal() {
+        const modal = document.getElementById('helpModal');
+        if (modal.classList.contains('hidden')) {
+            this.showHelpModal();
+        } else {
+            this.hideHelpModal();
+        }
     }
 
     handleTurnEnd(message, shouldResetBoard = false) {
