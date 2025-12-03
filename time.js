@@ -700,7 +700,13 @@ class TileGame {
     
         const buttons = document.querySelectorAll('.control-btn');
         buttons.forEach(button => {
-            if (button.id === 'restartBtn' && this.isDailyCompleted) {
+            // Never disable victory modal buttons, help button, or help modal close button
+            if (button.id === 'closeVictoryBtn' || 
+                button.id === 'copyResultBtn' || 
+                button.id === 'helpBtn' ||
+                button.id === 'closeHelpBtn') {
+                button.disabled = false;
+            } else if (button.id === 'restartBtn' && this.isDailyCompleted) {
                 button.disabled = true;
             } else {
                 button.disabled = this.isProcessingTurnEnd || this.isFlipping;

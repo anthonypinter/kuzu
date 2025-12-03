@@ -321,14 +321,15 @@ h1 {
 
 #victoryModal .modal-body {
     flex-grow: 0;
-}
-
-#victoryModal .modal-header {
-    margin-bottom: 2rem;
+    overflow: visible;
+    position: relative;
+    z-index: 1;
 }
 
 #victoryModal .modal-footer {
     margin-top: 2rem;
+    position: relative;
+    z-index: 12;
 }
 
 .modal-header {
@@ -469,11 +470,19 @@ h3 {
     text-align: center;
     border-top: 1px solid #e5e7eb;
     padding-top: 1rem;
+    padding-bottom: 1rem;
     width: 100%;
     position: sticky;
     bottom: 0;
     background-color: white;
     z-index: 10;
+    pointer-events: auto;
+}
+
+.modal-footer button {
+    pointer-events: auto;
+    position: relative;
+    z-index: 11;
 }
 
 .close-button {
