@@ -20,6 +20,9 @@
 html {
     overflow: hidden;
     height: 100%;
+    height: 100dvh; /* Dynamic viewport height */
+    -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape */
+    -ms-text-size-adjust: 100%;
 }
 
 body {
@@ -32,7 +35,10 @@ body {
     align-items: center;
     flex-direction: column;
     height: 100%;
+    height: 100dvh;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
@@ -77,8 +83,8 @@ h1 {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row;
+    gap: 1rem;
 }
 
 #nextGoal, #attemptCounter {
@@ -244,6 +250,10 @@ h1 {
     min-height: 44px;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .power-bubble.hidden {
     display: none;
 }
@@ -293,6 +303,8 @@ h1 {
     z-index: 1000;
     padding: 0;
     box-sizing: border-box;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal.hidden {
@@ -308,28 +320,29 @@ h1 {
     animation: slideIn 0.3s ease-out;
     width: min(700px, 100%);
     max-height: 90vh;
-    margin: 1rem;
+    margin: 1rem auto;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
 }
 
 #victoryModal .modal-content {
-    max-height: min(400px, 90vh);
+    max-height: min(500px, 90vh);
     justify-content: center;
 }
 
 #victoryModal .modal-body {
     flex-grow: 0;
     overflow: visible;
-    position: relative;
-    z-index: 1;
+}
+
+#victoryModal .modal-header {
+    margin-bottom: 1rem;
 }
 
 #victoryModal .modal-footer {
-    margin-top: 2rem;
-    position: relative;
-    z-index: 12;
+    margin-top: 1rem;
 }
 
 .modal-header {
@@ -357,6 +370,8 @@ h1 {
     padding: 0 0.5rem;
     margin: 0 -0.5rem;
     width: 100%;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
 }
 
 .help-content {
@@ -470,19 +485,15 @@ h3 {
     text-align: center;
     border-top: 1px solid #e5e7eb;
     padding-top: 1rem;
-    padding-bottom: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
     width: 100%;
-    position: sticky;
-    bottom: 0;
     background-color: white;
-    z-index: 10;
-    pointer-events: auto;
 }
 
-.modal-footer button {
-    pointer-events: auto;
-    position: relative;
-    z-index: 11;
+#helpModal .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
 }
 
 .close-button {
@@ -532,17 +543,26 @@ h3 {
 
     .modal {
         padding: 0;
+        align-items: flex-start;
+        padding-top: env(safe-area-inset-top, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
     }
 
     .modal-content {
         margin: 0;
         width: 100%;
+        max-width: 100%;
+        height: 100%;
         max-height: 100vh;
+        max-height: 100dvh; /* Dynamic viewport height for mobile browsers */
         border-radius: 0;
+        padding: max(1rem, env(safe-area-inset-top, 1rem)) 1rem max(1rem, env(safe-area-inset-bottom, 1rem)) 1rem;
     }
     
     #victoryModal .modal-content {
-        max-height: 100%;
+        height: auto;
+        max-height: 100vh;
+        max-height: 100dvh;
     }
 
     .modal-body {

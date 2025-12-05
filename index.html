@@ -44,9 +44,6 @@
     <div class="holder">
         <div class="container">
             <div class="game-info">
-                <div id="dailyDate" style="font-size: 0.875rem; color: #374151; display: none;">
-                    Today's Puzzle
-                </div>
                 <div id="nextGoal">Next Goal: 1</div>
                 <div id="attemptCounter">Attempt: 1</div>
             </div>
@@ -57,7 +54,7 @@
                 </div>
 
                 <div class="controls">
-                    <button id="restartBtn" class="control-btn">
+                    <button id="restartBtn" class="control-btn hidden">
                         Restart Attempt
                     </button>
                 </div>
@@ -79,18 +76,12 @@
                         Grappling
                     </div>
                 </div>
-
-                <div id="dailyComplete" class="game-message" style="display: none;">
-                    <p>🎉 Today's puzzle completed! 🎉</p>
-                    <p>Come back tomorrow for a new challenge!</p>
-                    
-                </div>
             </div>
 
             <div id="victoryModal" class="modal hidden">
                 <div class="modal-content">
                     <div class="modal-header" style="justify-content: center;">
-                        <h2 style="text-align: center;">🎉Congratulations! 🎉</h2>
+                        <h2 style="text-align: center;">ðŸŽ‰ Congratulations! ðŸŽ‰</h2>
                     </div>
                     <div class="modal-body">
                         <p style="text-align: center;">You've completed the sequence!</p>
@@ -100,6 +91,25 @@
                     <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
                         <button id="closeVictoryBtn" class="control-btn">Close</button>
                         <button id="copyResultBtn" class="control-btn">Copy Result</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="welcomeBackModal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header" style="justify-content: center;">
+                        <h2 style="text-align: center;">Welcome Back! 👋</h2>
+                    </div>
+                    <div class="modal-body">
+                        <p style="text-align: center; font-size: 1.1rem; margin-bottom: 1rem;">
+                            You're on attempt <strong><span id="welcomeAttemptNumber"></span></strong> of today's puzzle.
+                        </p>
+                        <p style="text-align: center; color: #6b7280;">
+                            Keep going - you've got this! 💪
+                        </p>
+                    </div>
+                    <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
+                        <button id="closeWelcomeBtn" class="control-btn">Let's Go!</button>
                     </div>
                 </div>
             </div>

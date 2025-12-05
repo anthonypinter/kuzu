@@ -51,31 +51,11 @@ class TileGame {
     }
 
     // New method to store game result for potential re-opening of victory modal
-    // New method to store game result for potential re-opening of victory modal
     storeGameResult() {
-        const powerNames = {
-            7: 'Extra Life',
-            8: 'Diagonal',
-            9: 'Any Order',
-            10: 'Warp',
-            6: 'Grapple'
-        };
-        
-        let powersText = "";
-        if (this.victoryStats.powersUsed.size === 0) {
-            powersText = "None - Pure skill! 💪";
-        } else {
-            const powers = Array.from(this.victoryStats.powersUsed)
-                .map(power => powerNames[power])
-                .filter(name => name)
-                .join(", ");
-            powersText = powers;
-        }
-
         const gameResult = {
             tryCount: this.tryCount,
             tilesRevealed: this.victoryStats.tilesRevealed,
-            powersUsed: powersText,
+            powersUsed: Array.from(this.victoryStats.powersUsed), // Store IDs, not text
             mode: this.isRandomMode ? 'Practice' : 'Daily',
             date: this.todaysDate, // Use same format as todaysDate (YYYY-MM-DD)
             currentStreak: this.currentStreak,
@@ -255,6 +235,12 @@ class TileGame {
             } else {
                 console.log('No stored game result found');
             }
+        } else if (dailyData && dailyData.date === this.todaysDate && !dailyData.completed && this.tryCount > 1) {
+            // Puzzle NOT completed but user has made attempts - show welcome back modal
+            console.log('Puzzle in progress, showing welcome back modal');
+            setTimeout(() => {
+                this.showWelcomeBackModal();
+            }, 500);
         } else {
             console.log('Conditions not met for auto-popup');
         }
@@ -338,6 +324,9 @@ class TileGame {
         // Reset winning path
         this.winningPath = [];
 
+        // Hide restart button (will show after first move)
+        document.getElementById('restartBtn').classList.add('hidden');
+
         // Update Try Count
         if (!this.isRandomMode) {
             this.loadDailyAttempts();
@@ -411,15 +400,11 @@ class TileGame {
 
     updateModeDisplay() {
         const header = document.querySelector('h1');
-        const dailyDateDiv = document.getElementById('dailyDate');
         
         if (this.isRandomMode) {
             header.textContent = "Kuzu's Maze - Practice";
-            dailyDateDiv.style.display = 'none';
         } else {
             header.textContent = "Kuzu's Maze";
-            dailyDateDiv.style.display = 'block';
-            dailyDateDiv.textContent = `Today's Puzzle - ${new Date().toLocaleDateString()}`;
         }
     }
 
@@ -615,6 +600,9 @@ class TileGame {
         const tileValue = this.board[row][col];
         this.flippedTiles.add(`${row}-${col}`);
         
+        // Show restart button after first tile is clicked
+        document.getElementById('restartBtn').classList.remove('hidden');
+        
         // Add to winning path tracking
         this.winningPath.push(`${row}-${col}`);
         
@@ -700,11 +688,12 @@ class TileGame {
     
         const buttons = document.querySelectorAll('.control-btn');
         buttons.forEach(button => {
-            // Never disable victory modal buttons, help button, or help modal close button
+            // Never disable victory modal buttons, help button, help modal close button, or welcome modal button
             if (button.id === 'closeVictoryBtn' || 
                 button.id === 'copyResultBtn' || 
                 button.id === 'helpBtn' ||
-                button.id === 'closeHelpBtn') {
+                button.id === 'closeHelpBtn' ||
+                button.id === 'closeWelcomeBtn') {
                 button.disabled = false;
             } else if (button.id === 'restartBtn' && this.isDailyCompleted) {
                 button.disabled = true;
@@ -811,19 +800,55 @@ class TileGame {
         document.getElementById('copyResultBtn').onclick = () => {
             // Check if we have stored result (for reopened modal)
             if (this.storedGameResult) {
-                const shareMessage = `🎉 Victory! 🎉
-📊 My Results:
-- Mode: ${this.storedGameResult.mode}
-- Attempts: ${this.storedGameResult.tryCount}
-- Tiles Revealed: ${this.storedGameResult.tilesRevealed} out of 20
-- Powers Used: ${this.storedGameResult.powersUsed}
-
-Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
+                // Format powers with emojis
+                const powerEmojis = {
+                    6: '🪝',  // Grapple
+                    7: '💧',  // Extra Life (Spray)
+                    8: '✂️',  // Diagonal (Shears)
+                    9: '🌸',  // Any Order (Flower Power)
+                    10: '🌀'  // Warp (Portal)
+                };
+                
+                let powersText = "";
+                // Check if powersUsed is an array and has items
+                if (Array.isArray(this.storedGameResult.powersUsed) && this.storedGameResult.powersUsed.length > 0) {
+                    const powers = this.storedGameResult.powersUsed
+                        .sort((a, b) => a - b)
+                        .map(power => powerEmojis[power])
+                        .filter(emoji => emoji)
+                        .join('');  // No spaces between emojis
+                    powersText = " " + powers;  // Space before emojis
+                } else {
+                    powersText = "";  // No powers, no emojis
+                }
+                
+                // Get formatted date (MM/DD/YYYY)
+                const dateObj = new Date(this.storedGameResult.date);
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                const year = dateObj.getFullYear();
+                const formattedDate = `${month}/${day}/${year}`;
+                
+                let shareMessage = `Kuzu's Maze ${formattedDate}\n${this.storedGameResult.tryCount}🎯${powersText}`;
+                
+                // Add streak ONLY if it's a multiple of 7 (7, 14, 21, etc.)
+                if (this.storedGameResult.mode === 'Daily' && 
+                    this.storedGameResult.tryCount <= 20 && 
+                    this.storedGameResult.currentStreak > 0 &&
+                    this.storedGameResult.currentStreak % 7 === 0) {
+                    shareMessage += `\n🔥 ${this.storedGameResult.currentStreak} day streak!`;
+                }
+                
                 this.shareMessage(shareMessage);
             } else {
                 // Use current game stats (for initial victory)
                 this.shareResults();
             }
+        };
+        
+        // Set up welcome back modal button
+        document.getElementById('closeWelcomeBtn').onclick = () => {
+            this.hideWelcomeBackModal();
         };
         
         this.updateModeDisplay();
@@ -909,6 +934,11 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                 };
             }
             
+            // Show restart button if tiles have been flipped
+            if (this.flippedTiles.size > 0) {
+                document.getElementById('restartBtn').classList.remove('hidden');
+            }
+            
             return true;
         } catch (e) {
             console.error('Failed to load turn state', e);
@@ -929,9 +959,7 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
             const dailyData = JSON.parse(savedData);
             
             if (dailyData.date === this.todaysDate) {
-                if (dailyData.completed) {
-                    this.showDailyCompleteMessage();
-                }
+                // Daily data matches today's date
                 return dailyData;
             }
         }
@@ -1025,13 +1053,7 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         this.saveStreakData();
     }
 
-    // Placeholder methods
-    // showDailyCompleteMessage() {}
-    showDailyCompleteMessage() {
-        if (!this.isRandomMode) {
-            document.getElementById('dailyComplete').style.display = 'block';
-        }
-    }
+    // Placeholder methods (dailyComplete message removed)
 
      showVictoryModal() {
         const modal = document.getElementById('victoryModal');
@@ -1041,9 +1063,16 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         if (!this.isRandomMode) {
             this.updateStreak(); // Update streak before saving
             this.saveDailyProgress();
-            this.showDailyCompleteMessage();
             this.isDailyCompleted = true;
         }
+
+        // Hide restart button and all power-up bubbles on victory
+        document.getElementById('restartBtn').classList.add('hidden');
+        document.getElementById('extraLifeBubble').classList.add('hidden');
+        document.getElementById('anyOrderBubble').classList.add('hidden');
+        document.getElementById('diagonalBubble').classList.add('hidden');
+        document.getElementById('warpBubble').classList.add('hidden');
+        document.getElementById('grappleBubble').classList.add('hidden');
 
         // Store the game result for potential re-opening
         this.storeGameResult();
@@ -1083,43 +1112,41 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
     }
 
     shareResults() {
-        // Format powers used
-        const powerNames = {
-            7: 'Extra Life',
-            8: 'Diagonal',
-            9: 'Any Order',
-            10: 'Warp',
-            6: 'Grapple'
+        // Format powers used with emojis
+        const powerEmojis = {
+            6: '🪝',  // Grapple
+            7: '💧',  // Extra Life (Spray)
+            8: '✂️',  // Diagonal (Shears)
+            9: '🌸',  // Any Order (Flower Power)
+            10: '🌀'  // Warp (Portal)
         };
         
         let powersText = "";
         if (this.victoryStats.powersUsed.size === 0) {
-            powersText = "None - Pure skill!";
+            powersText = "";  // No powers, no emojis
         } else {
             const powers = Array.from(this.victoryStats.powersUsed)
-                .map(power => powerNames[power])
-                .filter(name => name)
-                .join(", ");
-            powersText = powers;
+                .sort((a, b) => a - b) // Sort by power ID for consistent order
+                .map(power => powerEmojis[power])
+                .filter(emoji => emoji)
+                .join('');  // No spaces between emojis
+            powersText = " " + powers;  // Space before emojis
         }
         
-        // Create the message
-        let message = `Victory!
-📊 My Results:
-- Attempts: ${this.tryCount}
-- Tiles Revealed: ${this.victoryStats.tilesRevealed} out of 20
-- Powers Used: ${powersText}`;
+        // Get formatted date (MM/DD/YYYY)
+        const dateObj = new Date(this.todaysDate);
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        const formattedDate = `${month}/${day}/${year}`;
+        
+        // Create the message in new format with attempt emoji
+        let message = `Kuzu's Maze ${formattedDate}\n${this.tryCount}🎯${powersText}`;
 
-        // Add streak info if in Daily mode and completed in 20 or fewer attempts
-        if (!this.isRandomMode && this.tryCount <= 20) {
-            const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
-            message += `
-- ${streakEmoji} Streak: ${this.currentStreak} day${this.currentStreak !== 1 ? 's' : ''}`;
+        // Add streak info ONLY if it's a multiple of 7 (7, 14, 21, etc.)
+        if (!this.isRandomMode && this.tryCount <= 20 && this.currentStreak > 0 && this.currentStreak % 7 === 0) {
+            message += `\n🔥 ${this.currentStreak} day streak!`;
         }
-
-        message += `
-
-Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
 
         // Detect if device is likely mobile/tablet
         const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -1251,6 +1278,29 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
         }
     }
 
+    showWelcomeBackModal() {
+        if (this.isRandomMode) return;
+        
+        const dailyData = this.loadDailyProgress();
+        
+        // Only show if:
+        // 1. Daily puzzle exists
+        // 2. Not completed
+        // 3. tryCount > 1 (they've made at least one attempt)
+        if (dailyData && !dailyData.completed && this.tryCount > 1) {
+            const modal = document.getElementById('welcomeBackModal');
+            document.getElementById('welcomeAttemptNumber').textContent = this.tryCount;
+            modal.classList.remove('hidden');
+            
+            console.log('Showing welcome back modal for attempt', this.tryCount);
+        }
+    }
+
+    hideWelcomeBackModal() {
+        const modal = document.getElementById('welcomeBackModal');
+        modal.classList.add('hidden');
+    }
+
     handleTurnEnd(message, shouldResetBoard = false) {
         this.isProcessingTurnEnd = true;
         
@@ -1285,6 +1335,9 @@ Think you can do better? Try Kuzu's Maze: http://kuzusmaze.com`;
                 
                 // Reset winning path
                 this.winningPath = [];
+                
+                // Hide restart button for new attempt
+                document.getElementById('restartBtn').classList.add('hidden');
                 
                 this.saveDailyProgress();
             }
