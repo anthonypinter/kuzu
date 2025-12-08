@@ -559,6 +559,10 @@ h3 {
         padding: max(1rem, env(safe-area-inset-top, 1rem)) 1rem max(1rem, env(safe-area-inset-bottom, 1rem)) 1rem;
     }
     
+    #victoryModal {
+        align-items: center;
+    }
+    
     #victoryModal .modal-content {
         height: auto;
         max-height: 100vh;

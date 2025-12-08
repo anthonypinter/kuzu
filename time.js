@@ -632,11 +632,15 @@ class TileGame {
                  Math.abs(col - currentCol) === 1);
      
             if (isAdjacent) {
+                // Adjacent tile - flip it but stay on grapple tile
+                const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
+                if (!shouldEnd) {
+                    this.currentPosition = this.grapplePosition;
+                }
                 this.isGrappling = false;
                 this.grapplePosition = null;
-                this.currentPosition = [row, col];
-                this.handleTileEffect(row, col, tileValue);
             } else {
+                // Non-adjacent tile - flip it and stay on grapple tile
                 const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
                 if (!shouldEnd) {
                     this.currentPosition = this.grapplePosition;
@@ -803,9 +807,9 @@ class TileGame {
                 // Format powers with emojis
                 const powerEmojis = {
                     6: '🪝',  // Grapple
-                    7: '💧',  // Extra Life (Spray)
+                    7: '🔫',  // Extra Life (Spray) - Squirt Gun
                     8: '✂️',  // Diagonal (Shears)
-                    9: '🌸',  // Any Order (Flower Power)
+                    9: '🌼',  // Any Order (Flower Power) - Blossom
                     10: '🌀'  // Warp (Portal)
                 };
                 
@@ -816,22 +820,25 @@ class TileGame {
                         .sort((a, b) => a - b)
                         .map(power => powerEmojis[power])
                         .filter(emoji => emoji)
-                        .join('');  // No spaces between emojis
+                        .join(' ');  // Space between emojis
                     powersText = " " + powers;  // Space before emojis
                 } else {
                     powersText = "";  // No powers, no emojis
                 }
                 
-                // Get formatted date (MM/DD/YYYY)
+                // Get formatted date (M/D/YY format - no leading zeros, 2-digit year)
                 const dateObj = new Date(this.storedGameResult.date);
-                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                const day = String(dateObj.getDate()).padStart(2, '0');
-                const year = dateObj.getFullYear();
+                const month = dateObj.getMonth() + 1; // No padding
+                const day = dateObj.getDate(); // No padding
+                const year = String(dateObj.getFullYear()).slice(-2); // Last 2 digits
                 const formattedDate = `${month}/${day}/${year}`;
                 
-                let shareMessage = `Kuzu's Maze ${formattedDate}\n${this.storedGameResult.tryCount}🎯${powersText}`;
+                // Convert attempt number to emoji digits
+                const attemptEmoji = this.numberToEmoji(this.storedGameResult.tryCount);
                 
-                // Add streak ONLY if it's a multiple of 7 (7, 14, 21, etc.)
+                let shareMessage = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}`;
+                
+                // Add streak ONLY if it's a multiple of 7 (7, 14, 21, etc.) on separate line
                 if (this.storedGameResult.mode === 'Daily' && 
                     this.storedGameResult.tryCount <= 20 && 
                     this.storedGameResult.currentStreak > 0 &&
@@ -1111,13 +1118,22 @@ class TileGame {
         // Button handlers are set up once in setupEventListeners, not here
     }
 
+    // Helper function to convert number to emoji digits
+    numberToEmoji(num) {
+        const digitEmojis = {
+            '0': '0️⃣', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣',
+            '5': '5️⃣', '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣'
+        };
+        return String(num).split('').map(digit => digitEmojis[digit] || digit).join('');
+    }
+
     shareResults() {
         // Format powers used with emojis
         const powerEmojis = {
             6: '🪝',  // Grapple
-            7: '💧',  // Extra Life (Spray)
+            7: '🔫',  // Extra Life (Spray) - Squirt Gun
             8: '✂️',  // Diagonal (Shears)
-            9: '🌸',  // Any Order (Flower Power)
+            9: '🌼',  // Any Order (Flower Power) - Blossom
             10: '🌀'  // Warp (Portal)
         };
         
@@ -1129,21 +1145,24 @@ class TileGame {
                 .sort((a, b) => a - b) // Sort by power ID for consistent order
                 .map(power => powerEmojis[power])
                 .filter(emoji => emoji)
-                .join('');  // No spaces between emojis
+                .join(' ');  // Space between emojis
             powersText = " " + powers;  // Space before emojis
         }
         
-        // Get formatted date (MM/DD/YYYY)
+        // Get formatted date (M/D/YY format - no leading zeros, 2-digit year)
         const dateObj = new Date(this.todaysDate);
-        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const day = String(dateObj.getDate()).padStart(2, '0');
-        const year = dateObj.getFullYear();
+        const month = dateObj.getMonth() + 1; // No padding
+        const day = dateObj.getDate(); // No padding
+        const year = String(dateObj.getFullYear()).slice(-2); // Last 2 digits
         const formattedDate = `${month}/${day}/${year}`;
         
-        // Create the message in new format with attempt emoji
-        let message = `Kuzu's Maze ${formattedDate}\n${this.tryCount}🎯${powersText}`;
+        // Convert attempt number to emoji digits
+        const attemptEmoji = this.numberToEmoji(this.tryCount);
+        
+        // Create the message in two-line format with comma (no bullseye)
+        let message = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}`;
 
-        // Add streak info ONLY if it's a multiple of 7 (7, 14, 21, etc.)
+        // Add streak info ONLY if it's a multiple of 7 (7, 14, 21, etc.) on separate line
         if (!this.isRandomMode && this.tryCount <= 20 && this.currentStreak > 0 && this.currentStreak % 7 === 0) {
             message += `\n🔥 ${this.currentStreak} day streak!`;
         }
