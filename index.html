@@ -118,7 +118,19 @@
                             </div>
                         </div>
                         
-                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; width: 100%;">
+                        <!-- Histograms Side by Side -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; width: 100%;">
+                            <div>
+                                <h3 style="font-size: 0.75rem; color: #374151; margin-bottom: 0.5rem; text-align: center;">Attempts</h3>
+                                <div id="victoryAttemptsHistogram" class="histogram-vertical"></div>
+                            </div>
+                            <div>
+                                <h3 style="font-size: 0.75rem; color: #374151; margin-bottom: 0.5rem; text-align: center;">Score</h3>
+                                <div id="victoryScoreHistogram" class="histogram-vertical"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; width: 100%; margin-top: 1rem;">
                             <div style="text-align: center;">
                                 <p style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">Attempts</p>
                                 <p style="font-size: 1.25rem; font-weight: bold; margin: 0;" id="victoryAttempts">0</p>
@@ -141,7 +153,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
+                    <div id="victoryModalFooter" class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
                         <button id="closeVictoryBtn" class="control-btn">Close</button>
                         <button id="copyResultBtn" class="control-btn">Copy Result</button>
                     </div>
@@ -176,8 +188,20 @@
                                 <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">%</p>
                             </div>
                         </div>
+                        
+                        <!-- Histograms Side by Side -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; width: 100%;">
+                            <div>
+                                <h3 style="font-size: 0.75rem; color: #374151; margin-bottom: 0.5rem; text-align: center;">Attempts</h3>
+                                <div id="statsAttemptsHistogram" class="histogram-vertical"></div>
+                            </div>
+                            <div>
+                                <h3 style="font-size: 0.75rem; color: #374151; margin-bottom: 0.5rem; text-align: center;">Score</h3>
+                                <div id="statsScoreHistogram" class="histogram-vertical"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="modal-footer" style="display: flex; justify-content: center;">
+                    <div id="statsModalFooter" class="modal-footer" style="display: flex; justify-content: center;">
                         <button id="closeStatsBtn" class="control-btn">Close</button>
                     </div>
                 </div>

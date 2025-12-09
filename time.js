@@ -201,6 +201,12 @@ class TileGame {
         const winRate = this.calculateWinRate();
         document.getElementById('victoryWinRate').textContent = winRate;
         
+        // Generate histograms
+        const histData = this.loadHistogramData();
+        const currentScore = this.storedGameResult.score ? this.storedGameResult.score.total : 0;
+        this.generateHistogram('victoryAttemptsHistogram', histData.attempts, 'attempts', this.tryCount);
+        this.generateHistogram('victoryScoreHistogram', histData.scores, 'score', currentScore);
+        
         // Set header text based on mode
         const headerText = this.storedGameResult.mode === 'Practice' ? 
             'Congratulations!' : 
@@ -1194,6 +1200,120 @@ class TileGame {
         return Math.round((stats.wins / stats.totalDays) * 100);
     }
 
+    // Histogram data methods
+    loadHistogramData() {
+        if (this.isRandomMode) return { attempts: [], scores: [] };
+        
+        try {
+            const histData = localStorage.getItem('kuzu-maze-histogram-data');
+            if (histData) {
+                return JSON.parse(histData);
+            }
+        } catch (e) {
+            console.error('Failed to load histogram data', e);
+        }
+        
+        return { attempts: [], scores: [] };
+    }
+
+    saveHistogramData(attempts, score) {
+        if (this.isRandomMode) return;
+        
+        try {
+            const data = this.loadHistogramData();
+            
+            // Add new entry
+            data.attempts.push(attempts);
+            data.scores.push(score);
+            
+            // Keep only last 100 entries
+            if (data.attempts.length > 100) {
+                data.attempts = data.attempts.slice(-100);
+                data.scores = data.scores.slice(-100);
+            }
+            
+            localStorage.setItem('kuzu-maze-histogram-data', JSON.stringify(data));
+        } catch (e) {
+            console.error('Failed to save histogram data', e);
+        }
+    }
+
+    generateHistogram(containerId, data, type, currentValue = null) {
+        const container = document.getElementById(containerId);
+        if (!container || !data || data.length === 0) {
+            if (container) {
+                container.innerHTML = '<p style="text-align: center; color: #9ca3af; font-size: 0.7rem; padding: 1rem 0;">No data yet</p>';
+            }
+            return;
+        }
+        
+        // Define bucket ranges based on type
+        let buckets, bucketLabels;
+        
+        if (type === 'attempts') {
+            // Attempts: 1-5, 6-10, 11-15, 16-20, 20+ (low to high)
+            buckets = [0, 0, 0, 0, 0];
+            bucketLabels = ['1-5', '6-10', '11-15', '16-20', '20+'];
+            
+            data.forEach(value => {
+                if (value >= 1 && value <= 5) buckets[0]++;
+                else if (value >= 6 && value <= 10) buckets[1]++;
+                else if (value >= 11 && value <= 15) buckets[2]++;
+                else if (value >= 16 && value <= 20) buckets[3]++;
+                else if (value > 20) buckets[4]++;
+            });
+        } else {
+            // Score: 81-100, 61-80, 41-60, 21-40, 1-20 (high to low - reversed!)
+            buckets = [0, 0, 0, 0, 0];
+            bucketLabels = ['81-100', '61-80', '41-60', '21-40', '1-20'];
+            
+            data.forEach(value => {
+                if (value >= 81 && value <= 100) buckets[0]++;
+                else if (value >= 61 && value <= 80) buckets[1]++;
+                else if (value >= 41 && value <= 60) buckets[2]++;
+                else if (value >= 21 && value <= 40) buckets[3]++;
+                else if (value >= 1 && value <= 20) buckets[4]++;
+            });
+        }
+        
+        // Find max count for scaling
+        const maxCount = Math.max(...buckets, 1);
+        
+        // Determine which bucket contains current value
+        let currentBucketIndex = null;
+        if (currentValue !== null) {
+            if (type === 'attempts') {
+                if (currentValue >= 1 && currentValue <= 5) currentBucketIndex = 0;
+                else if (currentValue >= 6 && currentValue <= 10) currentBucketIndex = 1;
+                else if (currentValue >= 11 && currentValue <= 15) currentBucketIndex = 2;
+                else if (currentValue >= 16 && currentValue <= 20) currentBucketIndex = 3;
+                else if (currentValue > 20) currentBucketIndex = 4;
+            } else {
+                // Score bucket indices (reversed order)
+                if (currentValue >= 81 && currentValue <= 100) currentBucketIndex = 0;
+                else if (currentValue >= 61 && currentValue <= 80) currentBucketIndex = 1;
+                else if (currentValue >= 41 && currentValue <= 60) currentBucketIndex = 2;
+                else if (currentValue >= 21 && currentValue <= 40) currentBucketIndex = 3;
+                else if (currentValue >= 1 && currentValue <= 20) currentBucketIndex = 4;
+            }
+        }
+        
+        // Generate HTML (horizontal bars)
+        container.innerHTML = buckets.map((count, index) => {
+            const width = maxCount > 0 ? (count / maxCount) * 100 : 0;
+            const isHighlight = index === currentBucketIndex;
+            return `
+                <div class="histogram-bar">
+                    <span class="histogram-label">${bucketLabels[index]}</span>
+                    <div class="histogram-bar-fill ${isHighlight ? 'highlight' : ''}" 
+                         style="width: ${width}%;">
+                        ${count > 0 ? `<span class="histogram-count">${count}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     trackDayPlayed() {
         if (this.isRandomMode) return;
         
@@ -1308,6 +1428,16 @@ class TileGame {
         const gameStats = this.loadGameStats();
         const winRate = this.calculateWinRate();
         document.getElementById('victoryWinRate').textContent = winRate;
+        
+        // Save histogram data (attempts and score)
+        if (!this.isRandomMode) {
+            this.saveHistogramData(this.tryCount, score.total);
+        }
+        
+        // Generate histograms
+        const histData = this.loadHistogramData();
+        this.generateHistogram('victoryAttemptsHistogram', histData.attempts, 'attempts', this.tryCount);
+        this.generateHistogram('victoryScoreHistogram', histData.scores, 'score', score.total);
         
         const headerText = this.isRandomMode ? 
             'Congratulations!' : 
@@ -1445,6 +1575,11 @@ class TileGame {
         document.getElementById('statsMaxStreak').textContent = this.bestStreak;
         document.getElementById('statsTotalDays').textContent = gameStats.totalDays;
         document.getElementById('statsWinRate').textContent = winRate;
+        
+        // Generate histograms (without highlighting current value)
+        const histData = this.loadHistogramData();
+        this.generateHistogram('statsAttemptsHistogram', histData.attempts, 'attempts', null);
+        this.generateHistogram('statsScoreHistogram', histData.scores, 'score', null);
         
         // Show the modal
         const modal = document.getElementById('statsModal');
