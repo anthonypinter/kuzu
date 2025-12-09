@@ -52,6 +52,9 @@ class TileGame {
 
     // New method to store game result for potential re-opening of victory modal
     storeGameResult() {
+        // Calculate score before storing
+        const score = this.calculateScore();
+        
         const gameResult = {
             tryCount: this.tryCount,
             tilesRevealed: this.victoryStats.tilesRevealed,
@@ -60,7 +63,8 @@ class TileGame {
             date: this.todaysDate, // Use same format as todaysDate (YYYY-MM-DD)
             currentStreak: this.currentStreak,
             bestStreak: this.bestStreak,
-            winningPath: this.winningPath // Save winning path for golden borders
+            winningPath: this.winningPath, // Save winning path for golden borders
+            score: score // Store calculated score
         };
 
         // Store in localStorage
@@ -76,6 +80,84 @@ class TileGame {
         return gameResult;
     }
 
+    // Calculate Attempt Score (0-50 points)
+    calculateAttemptScore() {
+        const attempt = this.tryCount;
+        
+        if (attempt === 1) return 50;
+        if (attempt === 2) return 45;
+        if (attempt === 3) return 40;
+        if (attempt === 4) return 35;
+        if (attempt === 5) return 30;
+        if (attempt >= 6 && attempt <= 10) {
+            // Linear decrease from 25 to 20
+            return 25 - ((attempt - 6) * 1);
+        }
+        if (attempt >= 11 && attempt <= 15) {
+            // Linear decrease from 15 to 10
+            return 15 - ((attempt - 11) * 1);
+        }
+        if (attempt >= 16 && attempt <= 20) {
+            // Linear decrease from 5 to 0
+            return 5 - ((attempt - 16) * 1);
+        }
+        
+        return 0; // 21+ attempts
+    }
+
+    // Calculate Tile Efficiency Score (0-30 points)
+    calculateTileScore() {
+        const tilesRevealed = this.victoryStats.tilesRevealed;
+        
+        // Formula: 30 - (((totalTilesRevealed - 5) / 15) * 30)
+        // 5 tiles (mandatory flowers): 30 points
+        // Gradually reduces to 0 points at 20 tiles
+        
+        if (tilesRevealed <= 5) return 30;
+        if (tilesRevealed >= 20) return 0;
+        
+        const score = 30 - (((tilesRevealed - 5) / 15) * 30);
+        return Math.max(0, Math.round(score));
+    }
+
+    // Calculate Power-Up Efficiency Score (0-20 points)
+    calculatePowerupScore() {
+        let score = 20;
+        
+        // Deduct points for power-up usage
+        const powerupDeductions = {
+            6: 3,   // Grapple: -3 points
+            7: 5,   // Extra Life: -5 points
+            8: 4,   // Diagonal Movement: -4 points
+            9: 8,   // Any Order Flower: -8 points
+            10: 6   // Portal/Warp: -6 points
+        };
+        
+        this.victoryStats.powersUsed.forEach(powerId => {
+            if (powerupDeductions[powerId]) {
+                score -= powerupDeductions[powerId];
+            }
+        });
+        
+        return Math.max(0, score);
+    }
+
+    // Calculate Total Score (0-100 points)
+    calculateScore() {
+        const attemptScore = this.calculateAttemptScore();
+        const tileScore = this.calculateTileScore();
+        const powerupScore = this.calculatePowerupScore();
+        
+        const totalScore = attemptScore + tileScore + powerupScore;
+        
+        return {
+            total: totalScore,
+            attempt: attemptScore,
+            tile: tileScore,
+            powerup: powerupScore
+        };
+    }
+
     // Method to re-open victory modal with stored result
     reopenVictoryModal() {
         if (!this.storedGameResult) {
@@ -88,9 +170,36 @@ class TileGame {
 
         const modal = document.getElementById('victoryModal');
         modal.classList.remove('hidden');
-
-        // Set final try count
-        document.getElementById('finalTryCount').textContent = this.storedGameResult.tryCount;
+        
+        // Ensure streak data is loaded into instance variables
+        this.loadStreakData();
+        
+        // Display score from stored result or recalculate
+        if (this.storedGameResult.score) {
+            // Use stored score
+            document.getElementById('victoryTotalScore').textContent = this.storedGameResult.score.total;
+            document.getElementById('victoryAttemptScore').textContent = this.storedGameResult.score.attempt;
+            document.getElementById('victoryTileScore').textContent = this.storedGameResult.score.tile;
+            document.getElementById('victoryPowerupScore').textContent = this.storedGameResult.score.powerup;
+        } else {
+            // Recalculate score if not stored (for backwards compatibility)
+            const score = this.calculateScore();
+            document.getElementById('victoryTotalScore').textContent = score.total;
+            document.getElementById('victoryAttemptScore').textContent = score.attempt;
+            document.getElementById('victoryTileScore').textContent = score.tile;
+            document.getElementById('victoryPowerupScore').textContent = score.powerup;
+        }
+        
+        // Populate victory modal stats grid using INSTANCE variables (which are current/accurate)
+        // Use tryCount from instance (loaded in initializeBoard)
+        document.getElementById('victoryAttempts').textContent = this.tryCount;
+        document.getElementById('victoryCurrentStreak').textContent = this.currentStreak;
+        document.getElementById('victoryMaxStreak').textContent = this.bestStreak;
+        
+        // Calculate and display win rate from current game stats
+        const gameStats = this.loadGameStats();
+        const winRate = this.calculateWinRate();
+        document.getElementById('victoryWinRate').textContent = winRate;
         
         // Set header text based on mode
         const headerText = this.storedGameResult.mode === 'Practice' ? 
@@ -98,38 +207,8 @@ class TileGame {
             'Daily Puzzle Complete!';
         
         document.querySelector('#victoryModal .modal-header h2').textContent = headerText;
-        
-        // Display streak and game stats in modal
-        const resultElement = document.getElementById('victoryResultSummary');
-        if (resultElement) {
-            let htmlContent = '';
-            
-            // Show streak info if available and mode is Daily and completed in 20 or fewer attempts
-            if (this.storedGameResult.mode === 'Daily' && 
-                this.storedGameResult.tryCount <= 20 && 
-                this.storedGameResult.currentStreak !== undefined) {
-                const streakEmoji = this.storedGameResult.currentStreak >= 7 ? '🔥' : '⭐';
-                htmlContent = `
-                    <p style="font-size: 1.1rem; margin: 0.5rem 0;">
-                        ${streakEmoji} Current Streak: <strong>${this.storedGameResult.currentStreak}</strong> day${this.storedGameResult.currentStreak !== 1 ? 's' : ''}
-                    </p>
-                    <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
-                        Best Streak: ${this.storedGameResult.bestStreak} day${this.storedGameResult.bestStreak !== 1 ? 's' : ''}
-                    </p>
-                `;
-            } else if (this.storedGameResult.tryCount > 20) {
-                htmlContent = `
-                    <p style="font-size: 0.9rem; color: #6b7280; margin: 0.5rem 0;">
-                        Complete in 20 or fewer attempts to maintain your streak!
-                    </p>
-                `;
-            }
-            
-            resultElement.innerHTML = htmlContent;
-        }
 
-        // DON'T set up button handlers here - they should be set once in showVictoryModal or setupEventListeners
-        // The copy result button shareMessage is set up in setupVictoryModalButtons
+        // DON'T set up button handlers here - they should be set once in setupEventListeners
     }
 
     // Helper method to share results
@@ -174,7 +253,10 @@ class TileGame {
         }
         
         // Setup button for reopening victory modal
-        this.setupVictoryModalReopening();
+        this.setupStatsButton();
+        
+        // Track that this day was played (even if not completed)
+        this.trackDayPlayed();
         
         // Auto-show victory modal if today's daily puzzle is completed
         this.checkAndShowVictoryModal();
@@ -335,6 +417,9 @@ class TileGame {
                 this.isDailyCompleted = true;
                 this.showAllTiles = true;
                 this.isProcessingTurnEnd = true;
+                
+                // Show View Results button since puzzle is completed
+                document.getElementById('viewResultsBtn').classList.remove('hidden');
                 
                 // Load winning path from stored game result
                 const storedResult = localStorage.getItem('kuzuMazeLastGameResult');
@@ -692,12 +777,15 @@ class TileGame {
     
         const buttons = document.querySelectorAll('.control-btn');
         buttons.forEach(button => {
-            // Never disable victory modal buttons, help button, help modal close button, or welcome modal button
+            // Never disable modal buttons, help button, stats button, or view results button
             if (button.id === 'closeVictoryBtn' || 
                 button.id === 'copyResultBtn' || 
                 button.id === 'helpBtn' ||
                 button.id === 'closeHelpBtn' ||
-                button.id === 'closeWelcomeBtn') {
+                button.id === 'closeWelcomeBtn' ||
+                button.id === 'statsBtn' ||
+                button.id === 'closeStatsBtn' ||
+                button.id === 'viewResultsBtn') {
                 button.disabled = false;
             } else if (button.id === 'restartBtn' && this.isDailyCompleted) {
                 button.disabled = true;
@@ -778,6 +866,10 @@ class TileGame {
             }
         };
 
+        document.getElementById('viewResultsBtn').onclick = () => {
+            this.reopenVictoryModal();
+        };
+
         document.getElementById('helpBtn').onclick = () => {
             this.toggleHelpModal();
         };
@@ -789,6 +881,24 @@ class TileGame {
         document.getElementById('helpModal').onclick = (e) => {
             if (e.target.id === 'helpModal') {
                 this.hideHelpModal();
+            }
+        };
+        
+        // Stats modal event listeners
+        document.getElementById('closeStatsBtn').onclick = () => {
+            this.hideStatsModal();
+        };
+
+        document.getElementById('statsModal').onclick = (e) => {
+            if (e.target.id === 'statsModal') {
+                this.hideStatsModal();
+            }
+        };
+        
+        // Victory modal click outside to close
+        document.getElementById('victoryModal').onclick = (e) => {
+            if (e.target.id === 'victoryModal') {
+                this.hideVictoryModal();
             }
         };
         
@@ -1020,6 +1130,94 @@ class TileGame {
         }
     }
 
+    // Game stats methods (total days played, wins)
+    loadGameStats() {
+        if (this.isRandomMode) return { totalDays: 0, wins: 0, daysPlayed: [], winDays: [] };
+        
+        try {
+            const statsData = localStorage.getItem('kuzu-maze-game-stats');
+            if (statsData) {
+                const data = JSON.parse(statsData);
+                return {
+                    totalDays: data.totalDays || 0,
+                    wins: data.wins || 0,
+                    daysPlayed: data.daysPlayed || [],
+                    winDays: data.winDays || []
+                };
+            }
+        } catch (e) {
+            console.error('Failed to load game stats', e);
+        }
+        
+        return { totalDays: 0, wins: 0, daysPlayed: [], winDays: [] };
+    }
+
+    saveGameStats(isWin) {
+        if (this.isRandomMode) return;
+        
+        try {
+            const stats = this.loadGameStats();
+            
+            // Track unique days played
+            if (!stats.daysPlayed.includes(this.todaysDate)) {
+                stats.daysPlayed.push(this.todaysDate);
+                stats.totalDays = stats.daysPlayed.length;
+            }
+            
+            // Check if we've already recorded a win for today
+            const winDays = stats.winDays || [];
+            const alreadyWonToday = winDays.includes(this.todaysDate);
+            
+            // Track wins (completed in 20 or less attempts)
+            // Only increment if this is a win AND we haven't already recorded it today
+            if (isWin && this.tryCount <= 20 && !alreadyWonToday) {
+                stats.wins++;
+                winDays.push(this.todaysDate);
+            }
+            
+            const statsData = {
+                totalDays: stats.totalDays,
+                wins: stats.wins,
+                daysPlayed: stats.daysPlayed,
+                winDays: winDays
+            };
+            
+            localStorage.setItem('kuzu-maze-game-stats', JSON.stringify(statsData));
+        } catch (e) {
+            console.error('Failed to save game stats', e);
+        }
+    }
+
+    calculateWinRate() {
+        const stats = this.loadGameStats();
+        if (stats.totalDays === 0) return 0;
+        return Math.round((stats.wins / stats.totalDays) * 100);
+    }
+
+    trackDayPlayed() {
+        if (this.isRandomMode) return;
+        
+        try {
+            const stats = this.loadGameStats();
+            
+            // Track unique days played (even if not completed)
+            if (!stats.daysPlayed.includes(this.todaysDate)) {
+                stats.daysPlayed.push(this.todaysDate);
+                stats.totalDays = stats.daysPlayed.length;
+                
+                const statsData = {
+                    totalDays: stats.totalDays,
+                    wins: stats.wins,
+                    daysPlayed: stats.daysPlayed
+                };
+                
+                localStorage.setItem('kuzu-maze-game-stats', JSON.stringify(statsData));
+            }
+        } catch (e) {
+            console.error('Failed to track day played', e);
+        }
+    }
+
     updateStreak() {
         if (this.isRandomMode || this.tryCount > 20) return;
         
@@ -1071,49 +1269,51 @@ class TileGame {
             this.updateStreak(); // Update streak before saving
             this.saveDailyProgress();
             this.isDailyCompleted = true;
+            
+            // Save game stats (total days played, wins)
+            // Win = completed in 20 or less attempts
+            const isWin = this.tryCount <= 20;
+            this.saveGameStats(isWin);
         }
 
         // Hide restart button and all power-up bubbles on victory
         document.getElementById('restartBtn').classList.add('hidden');
         document.getElementById('extraLifeBubble').classList.add('hidden');
-        document.getElementById('anyOrderBubble').classList.add('hidden');
         document.getElementById('diagonalBubble').classList.add('hidden');
         document.getElementById('warpBubble').classList.add('hidden');
         document.getElementById('grappleBubble').classList.add('hidden');
+        
+        // Show View Results button
+        document.getElementById('viewResultsBtn').classList.remove('hidden');
 
         // Store the game result for potential re-opening
         this.storeGameResult();
 
-        // Setup the reopen button
-        this.setupVictoryModalReopening();
+        // Setup the stats button
+        this.setupStatsButton();
 
-        document.getElementById('finalTryCount').textContent = this.tryCount;
+        // Calculate and display score
+        const score = this.calculateScore();
+        document.getElementById('victoryTotalScore').textContent = score.total;
+        document.getElementById('victoryAttemptScore').textContent = score.attempt;
+        document.getElementById('victoryTileScore').textContent = score.tile;
+        document.getElementById('victoryPowerupScore').textContent = score.powerup;
+
+        // Populate victory modal stats grid
+        document.getElementById('victoryAttempts').textContent = this.tryCount;
+        document.getElementById('victoryCurrentStreak').textContent = this.currentStreak;
+        document.getElementById('victoryMaxStreak').textContent = this.bestStreak;
+        
+        // Calculate and display win rate
+        const gameStats = this.loadGameStats();
+        const winRate = this.calculateWinRate();
+        document.getElementById('victoryWinRate').textContent = winRate;
         
         const headerText = this.isRandomMode ? 
             'Congratulations!' : 
             'Daily Puzzle Complete!';
         
         document.querySelector('#victoryModal .modal-header h2').textContent = headerText;
-        
-        // Display streak information in victory modal
-        const resultSummary = document.getElementById('victoryResultSummary');
-        if (resultSummary && !this.isRandomMode && this.tryCount <= 20) {
-            const streakEmoji = this.currentStreak >= 7 ? '🔥' : '⭐';
-            resultSummary.innerHTML = `
-                <p style="font-size: 1.1rem; margin: 0.5rem 0;">
-                    ${streakEmoji} Current Streak: <strong>${this.currentStreak}</strong> day${this.currentStreak !== 1 ? 's' : ''}
-                </p>
-                <p style="font-size: 0.9rem; color: #6b7280; margin: 0.25rem 0;">
-                    Best Streak: ${this.bestStreak} day${this.bestStreak !== 1 ? 's' : ''}
-                </p>
-            `;
-        } else if (resultSummary && this.tryCount > 20) {
-            resultSummary.innerHTML = `
-                <p style="font-size: 0.9rem; color: #6b7280; margin: 0.5rem 0;">
-                    Complete in 20 or fewer attempts to maintain your streak!
-                </p>
-            `;
-        }
         
         // Button handlers are set up once in setupEventListeners, not here
     }
@@ -1159,8 +1359,11 @@ class TileGame {
         // Convert attempt number to emoji digits
         const attemptEmoji = this.numberToEmoji(this.tryCount);
         
+        // Get score
+        const score = this.calculateScore();
+        
         // Create the message in two-line format with comma (no bullseye)
-        let message = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}`;
+        let message = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}\n⭐ Score: ${score.total}/100`;
 
         // Add streak info ONLY if it's a multiple of 7 (7, 14, 21, etc.) on separate line
         if (!this.isRandomMode && this.tryCount <= 20 && this.currentStreak > 0 && this.currentStreak % 7 === 0) {
@@ -1222,60 +1425,67 @@ class TileGame {
     hideVictoryModal() {
         const modal = document.getElementById('victoryModal');
         modal.classList.add('hidden');
-        // Remove the processing turn end flag
-        this.isProcessingTurnEnd = false;
+        // Don't remove the processing turn end flag if puzzle is completed
+        // This prevents the board from being interactive after completion
+        if (!this.isDailyCompleted) {
+            this.isProcessingTurnEnd = false;
+        }
     }
 
-    // New method to handle modal reopening
-    setupVictoryModalReopening() {
-        // Remove any existing reopen buttons first
-        const existingButton = document.getElementById('viewLastResultBtn');
+    showStatsModal() {
+        // Load current streak data
+        this.loadStreakData();
+        
+        // Load game stats
+        const gameStats = this.loadGameStats();
+        const winRate = this.calculateWinRate();
+        
+        // Update the stats display
+        document.getElementById('statsCurrentStreak').textContent = this.currentStreak;
+        document.getElementById('statsMaxStreak').textContent = this.bestStreak;
+        document.getElementById('statsTotalDays').textContent = gameStats.totalDays;
+        document.getElementById('statsWinRate').textContent = winRate;
+        
+        // Show the modal
+        const modal = document.getElementById('statsModal');
+        modal.classList.remove('hidden');
+    }
+
+    hideStatsModal() {
+        const modal = document.getElementById('statsModal');
+        modal.classList.add('hidden');
+    }
+
+    // Method to setup Stats button
+    setupStatsButton() {
+        // Remove any existing stats buttons first
+        const existingButton = document.getElementById('statsBtn');
         if (existingButton) {
             existingButton.remove();
         }
 
-        // Check localStorage directly
-        const storedResult = localStorage.getItem('kuzuMazeLastGameResult');
-        
-        // If no stored game result, do nothing
-        if (!storedResult) return null;
-
-        // Create a new button to reopen the victory modal
-        const reopenButton = document.createElement('button');
-        reopenButton.id = 'viewLastResultBtn';
-        reopenButton.textContent = 'View Last Result';
-        reopenButton.className = 'control-btn';
+        // Create stats button
+        const statsButton = document.createElement('button');
+        statsButton.id = 'statsBtn';
+        statsButton.textContent = 'Stats';
+        statsButton.className = 'control-btn';
         
         // Always make the button visible
-        reopenButton.style.display = 'block';
+        statsButton.style.display = 'block';
         
-        // Add click event to toggle the modal
-        reopenButton.onclick = () => {
-            const modal = document.getElementById('victoryModal');
-            const isHidden = modal.classList.contains('hidden');
-            
-            if (isHidden) {
-                // Modal is hidden, show it
-                try {
-                    this.storedGameResult = JSON.parse(storedResult);
-                    this.reopenVictoryModal();
-                } catch (e) {
-                    console.error('Failed to parse stored game result', e);
-                }
-            } else {
-                // Modal is visible, just hide it (don't reset flag)
-                modal.classList.add('hidden');
-            }
+        // Add click event to show stats modal
+        statsButton.onclick = () => {
+            this.showStatsModal();
         };
         
         // Add to the header controls
         const header = document.querySelector('header .controls');
         if (header) {
             // Append the button at the end of the controls
-            header.appendChild(reopenButton);
+            header.appendChild(statsButton);
         }
 
-        return reopenButton;
+        return statsButton;
     }
 
     showHelpModal() {

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Kuzu's Maze</title>
     
     <!-- Web App Manifest -->
@@ -16,6 +16,18 @@
     
     <!-- Standard Favicon -->
     <link rel="icon" type="image/svg+xml" href="src/death.svg">
+    
+    <!-- Prevent text size adjustment on orientation change -->
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Chrome, Firefox OS and Opera -->
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- Windows Phone -->
+    <meta name="msapplication-navbutton-color" content="#ffffff">
+    
+    <!-- iOS Safari -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
     <!-- Theme Color -->
     <meta name="theme-color" content="#ffffff">
@@ -57,6 +69,9 @@
                     <button id="restartBtn" class="control-btn hidden">
                         Restart Attempt
                     </button>
+                    <button id="viewResultsBtn" class="control-btn hidden">
+                        View Results
+                    </button>
                 </div>
 
                 <div class="power-bubbles">
@@ -81,16 +96,89 @@
             <div id="victoryModal" class="modal hidden">
                 <div class="modal-content">
                     <div class="modal-header" style="justify-content: center;">
-                        <h2 style="text-align: center;">ðŸŽ‰ Congratulations! ðŸŽ‰</h2>
+                        <h2 style="text-align: center;">🎉 Congratulations! 🎉</h2>
                     </div>
                     <div class="modal-body">
-                        <p style="text-align: center;">You've completed the sequence!</p>
-                        <p style="text-align: center;">Number of attempts: <span id="finalTryCount"></span></p>
-                        <div id="victoryResultSummary" style="margin: 1rem 0; text-align: center;"></div>
+                        <!-- Score Display -->
+                        <div id="victoryScoreDisplay" style="text-align: center; margin-bottom: 1rem;">
+                            <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.25rem;">Total Score</p>
+                            <p style="font-size: 2rem; font-weight: bold; margin: 0; color: #3b82f6;" id="victoryTotalScore">0</p>
+                            <p style="font-size: 0.7rem; color: #9ca3af; margin-top: 0.15rem; margin-bottom: 0.5rem;">out of 100</p>
+                            <!-- Score Breakdown -->
+                            <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                                <span style="font-size: 0.7rem; color: #6b7280;">
+                                    Attempts: <strong id="victoryAttemptScore">0</strong><span style="color: #9ca3af;">/50</span>
+                                </span>
+                                <span style="font-size: 0.7rem; color: #6b7280;">
+                                    Tiles: <strong id="victoryTileScore">0</strong><span style="color: #9ca3af;">/30</span>
+                                </span>
+                                <span style="font-size: 0.7rem; color: #6b7280;">
+                                    Power-ups: <strong id="victoryPowerupScore">0</strong><span style="color: #9ca3af;">/20</span>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; width: 100%;">
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">Attempts</p>
+                                <p style="font-size: 1.25rem; font-weight: bold; margin: 0;" id="victoryAttempts">0</p>
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-top: 0.15rem;">tries</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">Current Streak</p>
+                                <p style="font-size: 1.25rem; font-weight: bold; margin: 0;" id="victoryCurrentStreak">0</p>
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-top: 0.15rem;">days</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">Max Streak</p>
+                                <p style="font-size: 1.25rem; font-weight: bold; margin: 0;" id="victoryMaxStreak">0</p>
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-top: 0.15rem;">days</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">Win Rate</p>
+                                <p style="font-size: 1.25rem; font-weight: bold; margin: 0;" id="victoryWinRate">0</p>
+                                <p style="font-size: 0.65rem; color: #6b7280; margin-top: 0.15rem;">%</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
                         <button id="closeVictoryBtn" class="control-btn">Close</button>
                         <button id="copyResultBtn" class="control-btn">Copy Result</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="statsModal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header" style="justify-content: center;">
+                        <h2 style="text-align: center;">📊 Stats</h2>
+                    </div>
+                    <div class="modal-body">
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; width: 100%;">
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.5rem;">Current Streak</p>
+                                <p style="font-size: 1.5rem; font-weight: bold; margin: 0;" id="statsCurrentStreak">0</p>
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">days</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.5rem;">Max Streak</p>
+                                <p style="font-size: 1.5rem; font-weight: bold; margin: 0;" id="statsMaxStreak">0</p>
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">days</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.5rem;">Total Days</p>
+                                <p style="font-size: 1.5rem; font-weight: bold; margin: 0;" id="statsTotalDays">0</p>
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">days</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.5rem;">Win Rate</p>
+                                <p style="font-size: 1.5rem; font-weight: bold; margin: 0;" id="statsWinRate">0</p>
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: center;">
+                        <button id="closeStatsBtn" class="control-btn">Close</button>
                     </div>
                 </div>
             </div>
