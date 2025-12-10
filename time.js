@@ -199,7 +199,7 @@ class TileGame {
         // Calculate and display win rate from current game stats
         const gameStats = this.loadGameStats();
         const winRate = this.calculateWinRate();
-        document.getElementById('victoryWinRate').textContent = winRate;
+        document.getElementById('victoryWinRate').textContent = winRate + '%';
         
         // Generate histograms
         const histData = this.loadHistogramData();
@@ -1427,7 +1427,7 @@ class TileGame {
         // Calculate and display win rate
         const gameStats = this.loadGameStats();
         const winRate = this.calculateWinRate();
-        document.getElementById('victoryWinRate').textContent = winRate;
+        document.getElementById('victoryWinRate').textContent = winRate + '%';
         
         // Save histogram data (attempts and score)
         if (!this.isRandomMode) {
@@ -1574,7 +1574,7 @@ class TileGame {
         document.getElementById('statsCurrentStreak').textContent = this.currentStreak;
         document.getElementById('statsMaxStreak').textContent = this.bestStreak;
         document.getElementById('statsTotalDays').textContent = gameStats.totalDays;
-        document.getElementById('statsWinRate').textContent = winRate;
+        document.getElementById('statsWinRate').textContent = winRate + '%';
         
         // Generate histograms (without highlighting current value)
         const histData = this.loadHistogramData();
