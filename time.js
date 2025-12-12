@@ -1222,15 +1222,9 @@ class TileGame {
         try {
             const data = this.loadHistogramData();
             
-            // Add new entry
+            // Add new entry (keep all games ever)
             data.attempts.push(attempts);
             data.scores.push(score);
-            
-            // Keep only last 100 entries
-            if (data.attempts.length > 100) {
-                data.attempts = data.attempts.slice(-100);
-                data.scores = data.scores.slice(-100);
-            }
             
             localStorage.setItem('kuzu-maze-histogram-data', JSON.stringify(data));
         } catch (e) {
