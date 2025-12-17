@@ -43,6 +43,9 @@ class TileGame {
         
         // Winning path tracking
         this.winningPath = [];
+        
+        // Solution data (optimal tiles and powers)
+        this.solutionData = null;
 
         // Board Management
         this.todaysDate = this.getTodaysDateString();
@@ -52,7 +55,8 @@ class TileGame {
 
     // New method to store game result for potential re-opening of victory modal
     storeGameResult() {
-        // Calculate score before storing
+        // Calculate stars and score
+        const stars = this.calculateStars();
         const score = this.calculateScore();
         
         const gameResult = {
@@ -64,7 +68,9 @@ class TileGame {
             currentStreak: this.currentStreak,
             bestStreak: this.bestStreak,
             winningPath: this.winningPath, // Save winning path for golden borders
-            score: score // Store calculated score
+            score: score, // Store calculated score (for backwards compatibility)
+            stars: stars, // Store star rating
+            solutionData: this.solutionData // Store optimal solution for comparison
         };
 
         // Store in localStorage
@@ -143,6 +149,53 @@ class TileGame {
     }
 
     // Calculate Total Score (0-100 points)
+    calculateStars() {
+        // If no solution data (random mode or old board format), return 3 stars as default
+        if (!this.solutionData) {
+            return 3;
+        }
+
+        const playerTiles = this.victoryStats.tilesRevealed;
+        const playerPowers = this.victoryStats.powersUsed.size;
+        const optimalTiles = this.solutionData.tiles;
+        const optimalPowers = this.solutionData.powers;
+
+        // 5 STARS: Matched optimal exactly (MAXIMUM)
+        if (playerTiles === optimalTiles && playerPowers === optimalPowers) {
+            return 5;
+        }
+
+        // 4 STARS: One extra tile OR one extra power (with optimal tiles)
+        if (playerTiles === optimalTiles + 1 || 
+            (playerTiles === optimalTiles && playerPowers === optimalPowers + 1)) {
+            return 4;
+        }
+
+        // 3 STARS: Close to optimal
+        if (playerTiles <= optimalTiles + 3 && playerPowers <= optimalPowers + 2) {
+            return 3;
+        }
+
+        // 2 STARS: Fair performance
+        if (playerTiles <= optimalTiles + 6 && playerPowers <= optimalPowers + 4) {
+            return 2;
+        }
+
+        // 1 STAR: Completed
+        return 1;
+    }
+
+    getStarMessage(stars) {
+        const messages = {
+            5: "Perfect! Matched optimal solution! ⚡",
+            4: "Excellent! One step away from perfect! 👍",
+            3: "Good job! Can you find a shorter path? 💪",
+            2: "Fair! Try to optimize your path. 🎯",
+            1: "Puzzle completed! Work on efficiency. 🎲"
+        };
+        return messages[stars] || messages[1];
+    }
+
     calculateScore() {
         const attemptScore = this.calculateAttemptScore();
         const tileScore = this.calculateTileScore();
@@ -174,38 +227,59 @@ class TileGame {
         // Ensure streak data is loaded into instance variables
         this.loadStreakData();
         
-        // Display score from stored result or recalculate
-        if (this.storedGameResult.score) {
-            // Use stored score
-            document.getElementById('victoryTotalScore').textContent = this.storedGameResult.score.total;
-            document.getElementById('victoryAttemptScore').textContent = this.storedGameResult.score.attempt;
-            document.getElementById('victoryTileScore').textContent = this.storedGameResult.score.tile;
-            document.getElementById('victoryPowerupScore').textContent = this.storedGameResult.score.powerup;
+        // Display stars from stored result or recalculate
+        let stars = this.storedGameResult.stars;
+        if (!stars) {
+            // Recalculate stars if not stored (for backwards compatibility)
+            // Temporarily set victory stats for calculation
+            this.victoryStats.tilesRevealed = this.storedGameResult.tilesRevealed;
+            this.victoryStats.powersUsed = new Set(this.storedGameResult.powersUsed);
+            this.solutionData = this.storedGameResult.solutionData;
+            stars = this.calculateStars();
+        }
+        
+        // Display stars visually
+        const starDisplay = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
+        document.getElementById('victoryStars').textContent = starDisplay;
+        
+        // Display star text
+        const starTexts = {
+            5: 'PERFECT! 5 STARS!',
+            4: 'EXCELLENT! 4 STARS!',
+            3: 'GOOD! 3 STARS!',
+            2: 'FAIR! 2 STARS!',
+            1: 'COMPLETED! 1 STAR'
+        };
+        document.getElementById('victoryStarText').textContent = starTexts[stars];
+        document.getElementById('victoryStarMessage').textContent = this.getStarMessage(stars);
+        
+        // Display player performance
+        const playerTiles = this.storedGameResult.tilesRevealed;
+        const playerPowers = this.storedGameResult.powersUsed.length;
+        document.getElementById('victoryPlayerStats').textContent = `${playerTiles} tiles | ${playerPowers} powers`;
+        
+        // Display optimal solution
+        if (this.storedGameResult.solutionData) {
+            document.getElementById('victoryOptimalStats').textContent = 
+                `${this.storedGameResult.solutionData.tiles} tiles | ${this.storedGameResult.solutionData.powers} powers`;
         } else {
-            // Recalculate score if not stored (for backwards compatibility)
-            const score = this.calculateScore();
-            document.getElementById('victoryTotalScore').textContent = score.total;
-            document.getElementById('victoryAttemptScore').textContent = score.attempt;
-            document.getElementById('victoryTileScore').textContent = score.tile;
-            document.getElementById('victoryPowerupScore').textContent = score.powerup;
+            document.getElementById('victoryOptimalStats').textContent = 'N/A';
         }
         
         // Populate victory modal stats grid using INSTANCE variables (which are current/accurate)
-        // Use tryCount from instance (loaded in initializeBoard)
-        document.getElementById('victoryAttempts').textContent = this.tryCount;
+        const gameStats = this.loadGameStats();
+        document.getElementById('victoryTotalPlays').textContent = gameStats.totalDays;
         document.getElementById('victoryCurrentStreak').textContent = this.currentStreak;
         document.getElementById('victoryMaxStreak').textContent = this.bestStreak;
         
         // Calculate and display win rate from current game stats
-        const gameStats = this.loadGameStats();
         const winRate = this.calculateWinRate();
         document.getElementById('victoryWinRate').textContent = winRate + '%';
         
         // Generate histograms
         const histData = this.loadHistogramData();
-        const currentScore = this.storedGameResult.score ? this.storedGameResult.score.total : 0;
         this.generateHistogram('victoryAttemptsHistogram', histData.attempts, 'attempts', this.tryCount);
-        this.generateHistogram('victoryScoreHistogram', histData.scores, 'score', currentScore);
+        this.generateHistogram('victoryStarsHistogram', histData.stars, 'stars', stars);
         
         // Set header text based on mode
         const headerText = this.storedGameResult.mode === 'Practice' ? 
@@ -364,14 +438,23 @@ class TileGame {
             throw new Error(`No board found for date: ${this.todaysDate}`);
         }
 
+        // Store solution data if available
+        if (boardForToday.solution) {
+            this.solutionData = {
+                tiles: boardForToday.solution.tiles_flipped,
+                powers: boardForToday.solution.powers_used.length
+            };
+        }
+
         // Validate the board structure
-        if (!Array.isArray(boardForToday) || 
-            boardForToday.length !== 5 || 
-            !boardForToday.every(row => row.length === 4)) {
+        const board = boardForToday.board || boardForToday;
+        if (!Array.isArray(board) || 
+            board.length !== 5 || 
+            !board.every(row => row.length === 4)) {
             throw new Error('Invalid board structure');
         }
 
-        return boardForToday;
+        return board;
     }
 
     getTodaysDateString() {
@@ -1202,21 +1285,29 @@ class TileGame {
 
     // Histogram data methods
     loadHistogramData() {
-        if (this.isRandomMode) return { attempts: [], scores: [] };
+        if (this.isRandomMode) return { attempts: [], stars: [] };
         
         try {
             const histData = localStorage.getItem('kuzu-maze-histogram-data');
             if (histData) {
-                return JSON.parse(histData);
+                const data = JSON.parse(histData);
+                // Migrate old data: if scores exist but stars don't, initialize stars array
+                if (data.scores && !data.stars) {
+                    data.stars = [];
+                }
+                // If neither exists, initialize both
+                if (!data.attempts) data.attempts = [];
+                if (!data.stars) data.stars = [];
+                return data;
             }
         } catch (e) {
             console.error('Failed to load histogram data', e);
         }
         
-        return { attempts: [], scores: [] };
+        return { attempts: [], stars: [] };
     }
 
-    saveHistogramData(attempts, score) {
+    saveHistogramData(attempts, stars) {
         if (this.isRandomMode) return;
         
         try {
@@ -1224,7 +1315,7 @@ class TileGame {
             
             // Add new entry (keep all games ever)
             data.attempts.push(attempts);
-            data.scores.push(score);
+            data.stars.push(stars);
             
             localStorage.setItem('kuzu-maze-histogram-data', JSON.stringify(data));
         } catch (e) {
@@ -1256,6 +1347,18 @@ class TileGame {
                 else if (value >= 16 && value <= 20) buckets[3]++;
                 else if (value > 20) buckets[4]++;
             });
+        } else if (type === 'stars') {
+            // Stars: 5, 4, 3, 2, 1 (high to low - reversed!)
+            buckets = [0, 0, 0, 0, 0];
+            bucketLabels = ['⭐⭐⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐', '⭐⭐', '⭐'];
+            
+            data.forEach(value => {
+                if (value === 5) buckets[0]++;
+                else if (value === 4) buckets[1]++;
+                else if (value === 3) buckets[2]++;
+                else if (value === 2) buckets[3]++;
+                else if (value === 1) buckets[4]++;
+            });
         } else {
             // Score: 81-100, 61-80, 41-60, 21-40, 1-20 (high to low - reversed!)
             buckets = [0, 0, 0, 0, 0];
@@ -1282,6 +1385,13 @@ class TileGame {
                 else if (currentValue >= 11 && currentValue <= 15) currentBucketIndex = 2;
                 else if (currentValue >= 16 && currentValue <= 20) currentBucketIndex = 3;
                 else if (currentValue > 20) currentBucketIndex = 4;
+            } else if (type === 'stars') {
+                // Stars bucket indices (reversed order: 5 at top)
+                if (currentValue === 5) currentBucketIndex = 0;
+                else if (currentValue === 4) currentBucketIndex = 1;
+                else if (currentValue === 3) currentBucketIndex = 2;
+                else if (currentValue === 2) currentBucketIndex = 3;
+                else if (currentValue === 1) currentBucketIndex = 4;
             } else {
                 // Score bucket indices (reversed order)
                 if (currentValue >= 81 && currentValue <= 100) currentBucketIndex = 0;
@@ -1406,32 +1516,57 @@ class TileGame {
         // Setup the stats button
         this.setupStatsButton();
 
-        // Calculate and display score
-        const score = this.calculateScore();
-        document.getElementById('victoryTotalScore').textContent = score.total;
-        document.getElementById('victoryAttemptScore').textContent = score.attempt;
-        document.getElementById('victoryTileScore').textContent = score.tile;
-        document.getElementById('victoryPowerupScore').textContent = score.powerup;
+        // Calculate and display stars
+        const stars = this.calculateStars();
+        const starMessage = this.getStarMessage(stars);
+        
+        // Display stars visually
+        const starDisplay = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
+        document.getElementById('victoryStars').textContent = starDisplay;
+        
+        // Display star text
+        const starTexts = {
+            5: 'PERFECT! 5 STARS!',
+            4: 'EXCELLENT! 4 STARS!',
+            3: 'GOOD! 3 STARS!',
+            2: 'FAIR! 2 STARS!',
+            1: 'COMPLETED! 1 STAR'
+        };
+        document.getElementById('victoryStarText').textContent = starTexts[stars];
+        document.getElementById('victoryStarMessage').textContent = starMessage;
+        
+        // Display player performance
+        const playerTiles = this.victoryStats.tilesRevealed;
+        const playerPowers = this.victoryStats.powersUsed.size;
+        document.getElementById('victoryPlayerStats').textContent = `${playerTiles} tiles | ${playerPowers} powers`;
+        
+        // Display optimal solution
+        if (this.solutionData) {
+            document.getElementById('victoryOptimalStats').textContent = 
+                `${this.solutionData.tiles} tiles | ${this.solutionData.powers} powers`;
+        } else {
+            document.getElementById('victoryOptimalStats').textContent = 'N/A';
+        }
 
         // Populate victory modal stats grid
-        document.getElementById('victoryAttempts').textContent = this.tryCount;
+        const gameStats = this.loadGameStats();
+        document.getElementById('victoryTotalPlays').textContent = gameStats.totalDays;
         document.getElementById('victoryCurrentStreak').textContent = this.currentStreak;
         document.getElementById('victoryMaxStreak').textContent = this.bestStreak;
         
         // Calculate and display win rate
-        const gameStats = this.loadGameStats();
         const winRate = this.calculateWinRate();
         document.getElementById('victoryWinRate').textContent = winRate + '%';
         
-        // Save histogram data (attempts and score)
+        // Save histogram data (attempts and stars)
         if (!this.isRandomMode) {
-            this.saveHistogramData(this.tryCount, score.total);
+            this.saveHistogramData(this.tryCount, stars);
         }
         
         // Generate histograms
         const histData = this.loadHistogramData();
         this.generateHistogram('victoryAttemptsHistogram', histData.attempts, 'attempts', this.tryCount);
-        this.generateHistogram('victoryScoreHistogram', histData.scores, 'score', score.total);
+        this.generateHistogram('victoryStarsHistogram', histData.stars, 'stars', stars);
         
         const headerText = this.isRandomMode ? 
             'Congratulations!' : 
@@ -1483,11 +1618,12 @@ class TileGame {
         // Convert attempt number to emoji digits
         const attemptEmoji = this.numberToEmoji(this.tryCount);
         
-        // Get score
-        const score = this.calculateScore();
+        // Get stars
+        const stars = this.calculateStars();
+        const starDisplay = '⭐'.repeat(stars);
         
         // Create the message in two-line format with comma (no bullseye)
-        let message = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}\n⭐ Score: ${score.total}/100`;
+        let message = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}\n${starDisplay}`;
 
         // Add streak info ONLY if it's a multiple of 7 (7, 14, 21, etc.) on separate line
         if (!this.isRandomMode && this.tryCount <= 20 && this.currentStreak > 0 && this.currentStreak % 7 === 0) {
@@ -1565,15 +1701,15 @@ class TileGame {
         const winRate = this.calculateWinRate();
         
         // Update the stats display
+        document.getElementById('statsTotalPlays').textContent = gameStats.totalDays;
+        document.getElementById('statsWinRate').textContent = winRate + '%';
         document.getElementById('statsCurrentStreak').textContent = this.currentStreak;
         document.getElementById('statsMaxStreak').textContent = this.bestStreak;
-        document.getElementById('statsTotalDays').textContent = gameStats.totalDays;
-        document.getElementById('statsWinRate').textContent = winRate + '%';
         
         // Generate histograms (without highlighting current value)
         const histData = this.loadHistogramData();
         this.generateHistogram('statsAttemptsHistogram', histData.attempts, 'attempts', null);
-        this.generateHistogram('statsScoreHistogram', histData.scores, 'score', null);
+        this.generateHistogram('statsStarsHistogram', histData.stars, 'stars', null);
         
         // Show the modal
         const modal = document.getElementById('statsModal');
