@@ -22,7 +22,7 @@ class GameState:
         
     def copy(self):
         """Create a deep copy of the state."""
-        return GameState(
+        new_state = GameState(
             self.position,
             self.flipped_tiles.copy(),
             self.collected_flowers.copy(),
@@ -34,6 +34,12 @@ class GameState:
             self.path.copy(),
             self.neutralized_tiles.copy()
         )
+        
+        # Copy grapple reveals if they exist
+        if hasattr(self, 'grapple_reveals'):
+            new_state.grapple_reveals = self.grapple_reveals.copy()
+        
+        return new_state
     
     def get_signature(self):
         """Get a hashable signature for state comparison."""
@@ -46,6 +52,35 @@ class GameState:
             self.spray_active,
             self.flower_power_active
         )
+    
+    def is_valid_move(self, next_pos, board_solver):
+        """Check if move from current position to next_pos is valid."""
+        current_row, current_col = self.position
+        next_row, next_col = next_pos
+        
+        # Check diagonal movement
+        row_diff = abs(next_row - current_row)
+        col_diff = abs(next_col - current_col)
+        
+        # Movement must be orthogonal or diagonal (if diagonal active)
+        is_valid_move = (
+            (row_diff == 1 and col_diff == 0) or  # Vertical move
+            (row_diff == 0 and col_diff == 1) or  # Horizontal move
+            (self.diagonal_active and row_diff == 1 and col_diff == 1)  # Diagonal move
+        )
+        
+        # Get tile value at destination
+        tile_value = board_solver.get_tile(next_row, next_col)
+        
+        # Cannot revisit non-stepping stone tiles
+        if next_pos in self.flipped_tiles and tile_value != 0:
+            return False
+        
+        # Cannot move through death tile without spray
+        if tile_value == 11 and not self.spray_active:
+            return False
+        
+        return is_valid_move
 
 class BoardSolver:
     def __init__(self, board: List[List[int]]):
@@ -143,6 +178,11 @@ class BoardSolver:
             state.powers_used.add(6)
             
             # Grapple allows revealing any unrevealed tile
+            # Track grapple reveals
+            if not hasattr(state, 'grapple_reveals'):
+                state.grapple_reveals = []
+            
+            # Grapple allows revealing any unrevealed tile
             # Effect of revealed tile is processed, but player stays on grapple tile
             for r in range(self.height):
                 for c in range(self.width):
@@ -151,6 +191,9 @@ class BoardSolver:
                         grapple_state.flipped_tiles.add((r, c))
                         
                         revealed_tile = self.get_tile(r, c)
+                        
+                        # Track the grapple reveal
+                        grapple_state.grapple_reveals.append((r, c, revealed_tile))
                         
                         # Process the revealed tile's effect
                         if revealed_tile == 0:
@@ -369,7 +412,8 @@ class BoardSolver:
                 )
                 
                 for next_pos in adjacent:
-                    if self.can_move_to(next_pos, current_state):
+                    # Use is_valid_move from the state itself
+                    if current_state.is_valid_move(next_pos, self):
                         new_state = current_state.copy()
                         new_state.position = next_pos
                         
@@ -393,7 +437,8 @@ class BoardSolver:
         return {
             'tiles_flipped': len(best.flipped_tiles),
             'powers_used': sorted(list(best.powers_used)),
-            'path': best.path
+            'path': best.path,
+            'grapple_reveals': getattr(best, 'grapple_reveals', [])
         }
 
 def generate_board(date_string: str) -> List[List[int]]:
@@ -436,7 +481,7 @@ def generate_daily_boards(start_date='2025-01-01', num_boards=100):
 
 # Generate the boards
 print("Starting board generation...")
-daily_boards = generate_daily_boards('2025-12-17', 100)
+daily_boards = generate_daily_boards('2025-12-19', 100)
 
 # Output to JSON file
 output_path = 'boards.json'
@@ -456,7 +501,15 @@ for date, board_data in list(daily_boards.items())[:3]:
     for row in board_data['board']:
         print("  " + str(row))
     print("Solution:")
-    print(f"  Tiles flipped: {board_data['solution']['tiles_flipped']}")
-    print(f"  Powers used: {board_data['solution']['powers_used']}")
-    if 'error' in board_data['solution']:
-        print(f"  Error: {board_data['solution']['error']}")
+    solution = board_data['solution']
+    print(f"  Tiles flipped: {solution['tiles_flipped']}")
+    print(f"  Powers used: {solution['powers_used']}")
+    
+    # Print path with board positions for clarity
+    print("  Path (row, col):")
+    for pos in solution['path']:
+        tile_value = board_data['board'][pos[0]][pos[1]]
+        print(f"    {pos} (tile value: {tile_value})")
+    
+    if 'error' in solution:
+        print(f"  Error: {solution['error']}")
