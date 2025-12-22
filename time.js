@@ -36,6 +36,9 @@ class TileGame {
 
         // Flag to track if victory modal was shown (prevent duplicate shows)
         this.victoryModalShown = false;
+        
+        // Flag to track if welcome back modal was shown (prevent duplicate shows)
+        this.welcomeBackModalShown = false;
 
         // Streak tracking
         this.currentStreak = 0;
@@ -399,10 +402,16 @@ class TileGame {
             }
         } else if (dailyData && dailyData.date === this.todaysDate && !dailyData.completed && this.tryCount > 1) {
             // Puzzle NOT completed but user has made attempts - show welcome back modal
-            console.log('Puzzle in progress, showing welcome back modal');
-            setTimeout(() => {
-                this.showWelcomeBackModal();
-            }, 500);
+            // Only show if not already shown
+            if (!this.welcomeBackModalShown) {
+                console.log('Puzzle in progress, showing welcome back modal');
+                this.welcomeBackModalShown = true;
+                setTimeout(() => {
+                    this.showWelcomeBackModal();
+                }, 500);
+            } else {
+                console.log('Welcome back modal already shown, skipping');
+            }
         } else {
             console.log('Conditions not met for auto-popup');
         }
@@ -785,12 +794,12 @@ class TileGame {
         if (this.isWarping) {
             this.isWarping = false;
             this.currentPosition = [row, col];
-            this.handleTileEffect(row, col, tileValue);
+            const shouldEndTurn = this.handleTileEffect(row, col, tileValue);
             this.updateGameState();
             this.renderBoard();
             
-            // Save turn state after warp move
-            if (this.collectedGoals.size < 5) {
+            // Save turn state after warp move (unless won or turn ended)
+            if (this.collectedGoals.size < 5 && !shouldEndTurn) {
                 this.saveTurnState();
             }
             return;
@@ -805,18 +814,19 @@ class TileGame {
                  Math.abs(row - currentRow) === 1 && 
                  Math.abs(col - currentCol) === 1);
      
+            let shouldEndTurn = false;
             if (isAdjacent) {
                 // Adjacent tile - flip it but stay on grapple tile
-                const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
-                if (!shouldEnd) {
+                shouldEndTurn = this.handleTileEffect(row, col, tileValue, true);
+                if (!shouldEndTurn) {
                     this.currentPosition = this.grapplePosition;
                 }
                 this.isGrappling = false;
                 this.grapplePosition = null;
             } else {
                 // Non-adjacent tile - flip it and stay on grapple tile
-                const shouldEnd = this.handleTileEffect(row, col, tileValue, true);
-                if (!shouldEnd) {
+                shouldEndTurn = this.handleTileEffect(row, col, tileValue, true);
+                if (!shouldEndTurn) {
                     this.currentPosition = this.grapplePosition;
                 }
                 this.isGrappling = false;
@@ -825,20 +835,20 @@ class TileGame {
             this.updateGameState();
             this.renderBoard();
             
-            // Save turn state after grapple move
-            if (this.collectedGoals.size < 5) {
+            // Save turn state after grapple move (unless won or turn ended)
+            if (this.collectedGoals.size < 5 && !shouldEndTurn) {
                 this.saveTurnState();
             }
             return;
         }
      
         this.currentPosition = [row, col];
-        this.handleTileEffect(row, col, tileValue);
+        const shouldEndTurn = this.handleTileEffect(row, col, tileValue);
         this.updateGameState();
         this.renderBoard();
         
-        // Save turn state after each move (unless won)
-        if (this.collectedGoals.size < 5) {
+        // Save turn state after each move (unless won or turn ended)
+        if (this.collectedGoals.size < 5 && !shouldEndTurn) {
             this.saveTurnState();
         }
     }

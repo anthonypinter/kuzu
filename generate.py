@@ -69,18 +69,49 @@ class GameState:
             (self.diagonal_active and row_diff == 1 and col_diff == 1)  # Diagonal move
         )
         
-        # Get tile value at destination
-        tile_value = board_solver.get_tile(next_row, next_col)
-        
-        # Cannot revisit non-stepping stone tiles
-        if next_pos in self.flipped_tiles and tile_value != 0:
+        # If move is not orthogonal/diagonal, it's invalid
+        if not is_valid_move:
             return False
         
-        # Cannot move through death tile without spray
+        # Determine the path between current position and next position
+        steps = []
+        if current_row == next_row:  # Horizontal move
+            start_col, end_col = min(current_col, next_col), max(current_col, next_col)
+            steps = [(current_row, c) for c in range(start_col + 1, end_col)]
+        
+        elif current_col == next_col:  # Vertical move
+            start_row, end_row = min(current_row, next_row), max(current_row, next_row)
+            steps = [(r, current_col) for r in range(start_row + 1, end_row)]
+        
+        elif self.diagonal_active:  # Diagonal move
+            row_step = 1 if next_row > current_row else -1
+            col_step = 1 if next_col > current_col else -1
+            r, c = current_row + row_step, current_col + col_step
+            while (r, c) != next_pos:
+                steps.append((r, c))
+                r += row_step if r != next_row else 0
+                c += col_step if c != next_col else 0
+        
+        # Check each step for death tiles
+        for step in steps:
+            tile_value = board_solver.get_tile(step[0], step[1])
+            if tile_value == 11 and not self.spray_active:
+                return False
+        
+        # Check destination tile
+        tile_value = board_solver.get_tile(next_row, next_col)
+        
+        # Cannot move onto a death tile without spray
         if tile_value == 11 and not self.spray_active:
             return False
         
-        return is_valid_move
+        # Cannot revisit non-stepping stone tiles
+        if next_pos in self.flipped_tiles:
+            # Only stepping stones (0) can be revisited
+            if tile_value != 0:
+                return False
+        
+        return True
 
 class BoardSolver:
     def __init__(self, board: List[List[int]]):
@@ -481,7 +512,7 @@ def generate_daily_boards(start_date='2025-01-01', num_boards=100):
 
 # Generate the boards
 print("Starting board generation...")
-daily_boards = generate_daily_boards('2025-12-19', 100)
+daily_boards = generate_daily_boards('2025-12-21', 1)
 
 # Output to JSON file
 output_path = 'boards.json'
