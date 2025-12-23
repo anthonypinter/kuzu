@@ -69,39 +69,43 @@ class GameState:
             (self.diagonal_active and row_diff == 1 and col_diff == 1)  # Diagonal move
         )
         
-        # If move is not orthogonal/diagonal, it's invalid
+        # If move is not orthogonal/diagonal, it is invalid
         if not is_valid_move:
             return False
         
-        # Determine the path between current position and next position
-        steps = []
-        if current_row == next_row:  # Horizontal move
+        # Determine path tiles with precise tracking
+        path_tiles = []
+        
+        # Horizontal move
+        if current_row == next_row:
             start_col, end_col = min(current_col, next_col), max(current_col, next_col)
-            steps = [(current_row, c) for c in range(start_col + 1, end_col)]
+            path_tiles = [(current_row, c) for c in range(start_col + 1, end_col)]
         
-        elif current_col == next_col:  # Vertical move
+        # Vertical move
+        elif current_col == next_col:
             start_row, end_row = min(current_row, next_row), max(current_row, next_row)
-            steps = [(r, current_col) for r in range(start_row + 1, end_row)]
+            path_tiles = [(r, current_col) for r in range(start_row + 1, end_row)]
         
-        elif self.diagonal_active:  # Diagonal move
+        # Diagonal move (when diagonal is active)
+        elif self.diagonal_active:
             row_step = 1 if next_row > current_row else -1
             col_step = 1 if next_col > current_col else -1
             r, c = current_row + row_step, current_col + col_step
             while (r, c) != next_pos:
-                steps.append((r, c))
+                path_tiles.append((r, c))
                 r += row_step if r != next_row else 0
                 c += col_step if c != next_col else 0
         
-        # Check each step for death tiles
-        for step in steps:
-            tile_value = board_solver.get_tile(step[0], step[1])
+        # Check path tiles for death tiles
+        for tile_pos in path_tiles:
+            tile_value = board_solver.get_tile(tile_pos[0], tile_pos[1])
             if tile_value == 11 and not self.spray_active:
                 return False
         
-        # Check destination tile
+        # Get tile value at destination
         tile_value = board_solver.get_tile(next_row, next_col)
         
-        # Cannot move onto a death tile without spray
+        # Cannot move through or onto a death tile without spray
         if tile_value == 11 and not self.spray_active:
             return False
         
@@ -512,7 +516,7 @@ def generate_daily_boards(start_date='2025-01-01', num_boards=100):
 
 # Generate the boards
 print("Starting board generation...")
-daily_boards = generate_daily_boards('2025-12-23', 1)
+daily_boards = generate_daily_boards('2025-12-23', 5)
 
 # Output to JSON file
 output_path = 'boards.json'
