@@ -22,7 +22,7 @@ class GameState:
         
     def copy(self):
         """Create a deep copy of the state."""
-        new_state = GameState(
+        return GameState(
             self.position,
             self.flipped_tiles.copy(),
             self.collected_flowers.copy(),
@@ -34,12 +34,6 @@ class GameState:
             self.path.copy(),
             self.neutralized_tiles.copy()
         )
-        
-        # Copy grapple reveals if they exist
-        if hasattr(self, 'grapple_reveals'):
-            new_state.grapple_reveals = self.grapple_reveals.copy()
-        
-        return new_state
     
     def get_signature(self):
         """Get a hashable signature for state comparison."""
@@ -97,22 +91,23 @@ class GameState:
                 c += col_step if c != next_col else 0
         
         # Check path tiles for death tiles
-        for tile_pos in path_tiles:
-            tile_value = board_solver.get_tile(tile_pos[0], tile_pos[1])
-            if tile_value == 11 and not self.spray_active:
+        for path_tile in path_tiles:
+            tile_value = board_solver.get_tile(path_tile[0], path_tile[1])
+            # Completely block movement if death tile is in path
+            if tile_value == 11:
                 return False
         
         # Get tile value at destination
-        tile_value = board_solver.get_tile(next_row, next_col)
+        dest_tile_value = board_solver.get_tile(next_row, next_col)
         
-        # Cannot move through or onto a death tile without spray
-        if tile_value == 11 and not self.spray_active:
+        # Cannot move onto a death tile 
+        if dest_tile_value == 11:
             return False
         
         # Cannot revisit non-stepping stone tiles
         if next_pos in self.flipped_tiles:
             # Only stepping stones (0) can be revisited
-            if tile_value != 0:
+            if dest_tile_value != 0:
                 return False
         
         return True
@@ -149,245 +144,6 @@ class BoardSolver:
             (r, c) for (r, c) in positions 
             if 0 <= r < self.height and 0 <= c < self.width
         ]
-    
-    def can_move_to(self, position: Tuple[int, int], state: GameState) -> bool:
-        """Check if a position can be moved to."""
-        row, col = position
-        
-        # Can't move to neutralized death tiles
-        if position in state.neutralized_tiles:
-            return False
-        
-        # Already flipped tiles can only be revisited if they're stepping stones
-        if position in state.flipped_tiles:
-            return self.get_tile(row, col) == 0
-        
-        # Otherwise, can move to any unflipped tile
-        return True
-    
-    def process_tile_effect(self, state: GameState, is_initial=False) -> List[GameState]:
-        """Process the effect of the current tile and return possible next states."""
-        row, col = state.position
-        tile_value = self.get_tile(row, col)
-        
-        # Add to path (tracks all moves including revisits)
-        if not is_initial:
-            state.path.append(state.position)
-        
-        # If this is a new tile, add it to flipped tiles (counts unique tiles only)
-        if state.position not in state.flipped_tiles:
-            state.flipped_tiles.add(state.position)
-        
-        new_states = []
-        
-        # Stepping stone (0) - just continue
-        if tile_value == 0:
-            new_states.append(state)
-        
-        # Flowers (1-5)
-        elif tile_value in {1, 2, 3, 4, 5}:
-            # Check if we can collect this flower
-            can_collect = False
-            
-            if state.flower_power_active:
-                # Flower power allows any flower, but is consumed
-                can_collect = True
-                state.flower_power_active = False
-            elif tile_value == state.next_flower:
-                # Correct sequence
-                can_collect = True
-                
-                # Refill spray when collecting correct flower
-                if state.next_flower > 1:  # Not the first flower
-                    state.spray_active = True
-            
-            if can_collect:
-                state.collected_flowers.add(tile_value)
-                if tile_value == state.next_flower:
-                    state.next_flower += 1
-                new_states.append(state)
-            # If can't collect, turn ends (return empty list)
-        
-        # Grapple (6)
-        elif tile_value == 6:
-            state.powers_used.add(6)
-            
-            # Grapple allows revealing any unrevealed tile
-            # Track grapple reveals
-            if not hasattr(state, 'grapple_reveals'):
-                state.grapple_reveals = []
-            
-            # Grapple allows revealing any unrevealed tile
-            # Effect of revealed tile is processed, but player stays on grapple tile
-            for r in range(self.height):
-                for c in range(self.width):
-                    if (r, c) not in state.flipped_tiles:
-                        grapple_state = state.copy()
-                        grapple_state.flipped_tiles.add((r, c))
-                        
-                        revealed_tile = self.get_tile(r, c)
-                        
-                        # Track the grapple reveal
-                        grapple_state.grapple_reveals.append((r, c, revealed_tile))
-                        
-                        # Process the revealed tile's effect
-                        if revealed_tile == 0:
-                            # Stepping stone - no effect
-                            new_states.append(grapple_state)
-                        
-                        elif revealed_tile in {1, 2, 3, 4, 5}:
-                            # Flower revealed by grapple
-                            can_collect = False
-                            if grapple_state.flower_power_active:
-                                can_collect = True
-                                grapple_state.flower_power_active = False
-                            elif revealed_tile == grapple_state.next_flower:
-                                can_collect = True
-                                if grapple_state.next_flower > 1:
-                                    grapple_state.spray_active = True
-                            
-                            if can_collect:
-                                grapple_state.collected_flowers.add(revealed_tile)
-                                if revealed_tile == grapple_state.next_flower:
-                                    grapple_state.next_flower += 1
-                                new_states.append(grapple_state)
-                        
-                        elif revealed_tile == 7:
-                            # Spray
-                            grapple_state.spray_active = True
-                            grapple_state.powers_used.add(7)
-                            new_states.append(grapple_state)
-                        
-                        elif revealed_tile == 8:
-                            # Diagonal
-                            grapple_state.diagonal_active = True
-                            grapple_state.powers_used.add(8)
-                            new_states.append(grapple_state)
-                        
-                        elif revealed_tile == 9:
-                            # Flower power
-                            grapple_state.flower_power_active = True
-                            grapple_state.powers_used.add(9)
-                            new_states.append(grapple_state)
-                        
-                        elif revealed_tile == 10:
-                            # Warp revealed by grapple - player stays on grapple, uses warp effect
-                            grapple_state.powers_used.add(10)
-                            
-                            # Warp allows revealing another tile
-                            for wr in range(self.height):
-                                for wc in range(self.width):
-                                    if (wr, wc) not in grapple_state.flipped_tiles:
-                                        warp_state = grapple_state.copy()
-                                        warp_state.flipped_tiles.add((wr, wc))
-                                        
-                                        warped_tile = self.get_tile(wr, wc)
-                                        
-                                        # Simple processing for warped tile
-                                        if warped_tile in {0, 7, 8, 9}:
-                                            if warped_tile == 7:
-                                                warp_state.spray_active = True
-                                                warp_state.powers_used.add(7)
-                                            elif warped_tile == 8:
-                                                warp_state.diagonal_active = True
-                                                warp_state.powers_used.add(8)
-                                            elif warped_tile == 9:
-                                                warp_state.flower_power_active = True
-                                                warp_state.powers_used.add(9)
-                                            new_states.append(warp_state)
-                        
-                        elif revealed_tile == 11:
-                            # Death tile revealed by grapple
-                            if grapple_state.spray_active:
-                                grapple_state.spray_active = False
-                                grapple_state.neutralized_tiles.add((r, c))
-                                new_states.append(grapple_state)
-                            # Otherwise turn ends
-        
-        # Spray/Extra Life (7)
-        elif tile_value == 7:
-            state.spray_active = True
-            state.powers_used.add(7)
-            new_states.append(state)
-        
-        # Diagonal (8)
-        elif tile_value == 8:
-            state.diagonal_active = True
-            state.powers_used.add(8)
-            new_states.append(state)
-        
-        # Flower Power (9)
-        elif tile_value == 9:
-            state.flower_power_active = True
-            state.powers_used.add(9)
-            new_states.append(state)
-        
-        # Portal/Warp (10)
-        elif tile_value == 10:
-            state.powers_used.add(10)
-            
-            # Can warp to any unrevealed tile and move there
-            for r in range(self.height):
-                for c in range(self.width):
-                    if (r, c) not in state.flipped_tiles:
-                        warp_state = state.copy()
-                        warp_state.position = (r, c)
-                        warp_state.flipped_tiles.add((r, c))
-                        warp_state.path.append((r, c))
-                        
-                        # Process the warped-to tile
-                        warped_tile = self.get_tile(r, c)
-                        
-                        if warped_tile == 0:
-                            new_states.append(warp_state)
-                        elif warped_tile == 7:
-                            warp_state.spray_active = True
-                            warp_state.powers_used.add(7)
-                            new_states.append(warp_state)
-                        elif warped_tile == 8:
-                            warp_state.diagonal_active = True
-                            warp_state.powers_used.add(8)
-                            new_states.append(warp_state)
-                        elif warped_tile == 9:
-                            warp_state.flower_power_active = True
-                            warp_state.powers_used.add(9)
-                            new_states.append(warp_state)
-                        elif warped_tile == 6:
-                            # Warped onto grapple
-                            warp_state.powers_used.add(6)
-                            # This would trigger grapple logic recursively
-                            new_states.append(warp_state)
-                        elif warped_tile in {1, 2, 3, 4, 5}:
-                            can_collect = False
-                            if warp_state.flower_power_active:
-                                can_collect = True
-                                warp_state.flower_power_active = False
-                            elif warped_tile == warp_state.next_flower:
-                                can_collect = True
-                                if warp_state.next_flower > 1:
-                                    warp_state.spray_active = True
-                            
-                            if can_collect:
-                                warp_state.collected_flowers.add(warped_tile)
-                                if warped_tile == warp_state.next_flower:
-                                    warp_state.next_flower += 1
-                                new_states.append(warp_state)
-                        elif warped_tile == 11:
-                            if warp_state.spray_active:
-                                warp_state.spray_active = False
-                                warp_state.neutralized_tiles.add((r, c))
-                                new_states.append(warp_state)
-        
-        # Death tile (11)
-        elif tile_value == 11:
-            if state.spray_active:
-                # Neutralize and continue
-                state.spray_active = False
-                state.neutralized_tiles.add(state.position)
-                new_states.append(state)
-            # Otherwise turn ends (return empty list)
-        
-        return new_states
     
     def solve(self) -> Dict:
         """Find the optimal solution for the board using BFS."""
@@ -472,9 +228,93 @@ class BoardSolver:
         return {
             'tiles_flipped': len(best.flipped_tiles),
             'powers_used': sorted(list(best.powers_used)),
-            'path': best.path,
-            'grapple_reveals': getattr(best, 'grapple_reveals', [])
+            'path': best.path
         }
+
+    def process_tile_effect(self, state: GameState, is_initial=False) -> List[GameState]:
+        """Process the effect of the current tile and return possible next states."""
+        row, col = state.position
+        tile_value = self.get_tile(row, col)
+        
+        # Add to path (tracks all moves including revisits)
+        if not is_initial:
+            state.path.append(state.position)
+        
+        # If this is a new tile, add it to flipped tiles (counts unique tiles only)
+        if state.position not in state.flipped_tiles:
+            state.flipped_tiles.add(state.position)
+        
+        new_states = []
+        
+        # Stepping stone (0) - just continue
+        if tile_value == 0:
+            new_states.append(state)
+        
+        # Flowers (1-5)
+        elif tile_value in {1, 2, 3, 4, 5}:
+            # Check if we can collect this flower
+            can_collect = False
+            
+            if state.flower_power_active:
+                # Flower power allows any flower, but is consumed
+                can_collect = True
+                state.flower_power_active = False
+            elif tile_value == state.next_flower:
+                # Correct sequence
+                can_collect = True
+                
+                # Refill spray when collecting correct flower
+                if state.next_flower > 1:  # Not the first flower
+                    state.spray_active = True
+            
+            if can_collect:
+                state.collected_flowers.add(tile_value)
+                if tile_value == state.next_flower:
+                    state.next_flower += 1
+                new_states.append(state)
+            # If can't collect, turn ends (return empty list)
+        
+        # Spray/Extra Life (7)
+        elif tile_value == 7:
+            state.spray_active = True
+            state.powers_used.add(7)
+            new_states.append(state)
+        
+        # Diagonal (8)
+        elif tile_value == 8:
+            state.diagonal_active = True
+            state.powers_used.add(8)
+            new_states.append(state)
+        
+        # Flower Power (9)
+        elif tile_value == 9:
+            state.flower_power_active = True
+            state.powers_used.add(9)
+            new_states.append(state)
+        
+        # Portal/Warp (10)
+        elif tile_value == 10:
+            state.powers_used.add(10)
+            
+            # Can warp to any unrevealed tile
+            for r in range(self.height):
+                for c in range(self.width):
+                    if (r, c) not in state.flipped_tiles:
+                        warp_state = state.copy()
+                        warp_state.position = (r, c)
+                        warp_state.flipped_tiles.add((r, c))
+                        new_states.append(warp_state)
+        
+        # Death tile (11)
+        elif tile_value == 11:
+            if state.spray_active:
+                # Neutralize and continue
+                state.spray_active = False
+                state.neutralized_tiles.add(state.position)
+                new_states.append(state)
+            # Otherwise turn ends (return empty list)
+        
+        return new_states
 
 def generate_board(date_string: str) -> List[List[int]]:
     """Generate a 5x4 board with specific tile distribution."""
@@ -516,7 +356,7 @@ def generate_daily_boards(start_date='2025-01-01', num_boards=100):
 
 # Generate the boards
 print("Starting board generation...")
-daily_boards = generate_daily_boards('2025-12-23', 5)
+daily_boards = generate_daily_boards('2025-12-23', 100)
 
 # Output to JSON file
 output_path = 'boards.json'
