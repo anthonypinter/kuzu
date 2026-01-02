@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kuzu's Maze Board JSON Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            font-family: monospace;
+        }
+        button {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Kuzu's Maze Board JSON Converter</h1>
+    <input type="file" id="jsonFileInput" accept=".json">
+    <button onclick="convertJSON()">Convert JSON</button>
+    <h2>Original JSON:</h2>
+    <textarea id="originalJSON"></textarea>
+    <h2>Converted JSON:</h2>
+    <textarea id="convertedJSON"></textarea>
+
+    <script>
+        function customStringify(obj) {
+            // Custom JSON stringification function
+            function formatArray(arr, indent = 2) {
+                // For 1D array of numbers
+                if (arr.every(item => typeof item === 'number')) {
+                    return `[${arr.join(',')}]`;
+                }
+                
+                // For 2D array of numbers - board style
+                if (arr.every(subArr => Array.isArray(subArr) && subArr.every(item => typeof item === 'number'))) {
+                    return '[\n' + 
+                        arr.map(subArr => `      [${subArr.join(',')}]`).join(',\n') + 
+                        '\n    ]';
+                }
+                
+                // For path-like 2D array
+                if (arr.length > 0 && Array.isArray(arr[0]) && arr[0].every(item => typeof item === 'number')) {
+                    return '[ \n' + 
+                        arr.map(subArr => `        [${subArr.join(',')}]`).join(',\n') + 
+                        '\n      ]';
+                }
+                
+                // Fallback for other types of arrays
+                return JSON.stringify(arr);
+            }
+
+            // Custom replacer to handle specific formatting
+            function replacer(key, value) {
+                if (Array.isArray(value)) {
+                    return formatArray(value);
+                }
+                return value;
+            }
+
+            // Convert to string with custom formatting
+            let jsonString = JSON.stringify(obj, null, 2);
+
+            // Post-processing to match exact formatting
+            jsonString = jsonString
+                .replace(/"board": \[[\s\S]*?\]/g, match => {
+                    // Specifically format board arrays
+                    const formatted = match.replace(/\[(\d+,\d+,\d+,\d+)\]/g, '      [$1]');
+                    return formatted;
+                })
+                .replace(/"powers_used": \[.*?\]/g, match => {
+                    // Format powers_used to be on one line
+                    return match.replace(/\s+/g, '');
+                });
+
+            return jsonString;
+        }
+
+        function convertJSON() {
+            const fileInput = document.getElementById('jsonFileInput');
+            const originalJSONTextArea = document.getElementById('originalJSON');
+            const convertedJSONTextArea = document.getElementById('convertedJSON');
+
+            if (!fileInput.files.length) {
+                alert('Please select a JSON file first.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const originalJSON = JSON.parse(e.target.result);
+                    const convertedJSON = {};
+
+                    // Iterate through each date in the original JSON
+                    Object.keys(originalJSON).forEach(date => {
+                        const boardData = originalJSON[date];
+                        
+                        // Create the new structure
+                        convertedJSON[date] = {
+                            board: boardData.board,
+                            solution: {
+                                tiles_flipped: boardData.solution.tiles_flipped,
+                                powers_used: boardData.solution.powers_used,
+                                path: boardData.solution.path
+                            }
+                        };
+                    });
+
+                    // Display original and converted JSON
+                    originalJSONTextArea.value = JSON.stringify(originalJSON, null, 4);
+                    convertedJSONTextArea.value = customStringify(convertedJSON);
+                } catch (error) {
+                    alert('Error parsing JSON: ' + error.message);
+                }
+            };
+
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuzu's Maze - Board Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --tile-size: 80px;
+            --gap-size: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            line-height: 1.5;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+        }
+
+        h1 {
+            font-family: "Righteous", sans-serif;
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #3b82f6;
+        }
+
+        .input-section {
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #2563eb;
+        }
+
+        button.secondary {
+            background-color: #6b7280;
+        }
+
+        button.secondary:hover {
+            background-color: #4b5563;
+        }
+
+        .board-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, var(--tile-size));
+            grid-template-rows: repeat(5, var(--tile-size));
+            gap: var(--gap-size);
+            background-color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .tile {
+            width: var(--tile-size);
+            height: var(--tile-size);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            border-radius: 0.5rem;
+        }
+
+        .legend {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #f9fafb;
+            border-radius: 0.75rem;
+        }
+
+        .legend h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .legend-tile {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .legend-tile img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            border-radius: 0.375rem;
+        }
+
+        .legend-text {
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+
+        .error-message {
+            padding: 1rem;
+            background-color: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 0.5rem;
+            color: #991b1b;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .help-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+
+        .example-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .example-buttons button {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            background-color: #10b981;
+        }
+
+        .example-buttons button:hover {
+            background-color: #059669;
+        }
+
+        @media (max-width: 640px) {
+            :root {
+                --tile-size: 60px;
+                --gap-size: 6px;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Kuzu's Maze - Board Visualizer</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label for="boardInput">Board Configuration (5 rows × 4 columns)</label>
+                <p class="help-text">
+                    Enter your board as a JSON array. Each row should have 4 values (0-11).
+                </p>
+                <div class="example-buttons">
+                    <button onclick="loadExample1()">Load Example 1</button>
+                    <button onclick="loadExample2()">Load Example 2</button>
+                    <button onclick="loadRandomBoard()">Generate Random</button>
+                </div>
+                <textarea id="boardInput" placeholder='[
+  [7, 11, 0, 0],
+  [9, 1, 11, 0],
+  [2, 4, 11, 11],
+  [5, 6, 0, 3],
+  [10, 8, 0, 0]
+]'></textarea>
+            </div>
+            
+            <div class="button-group">
+                <button onclick="visualizeBoard()">Visualize Board</button>
+                <button class="secondary" onclick="clearBoard()">Clear</button>
+            </div>
+            
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+
+        <div class="board-container">
+            <div class="game-board" id="gameBoard">
+                <!-- Board tiles will be generated here -->
+            </div>
+        </div>
+
+        <div class="legend">
+            <h2>Tile Legend</h2>
+            <div class="legend-grid">
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/walkthrough.svg" alt="0"></div>
+                    <div class="legend-text"><strong>0:</strong> Stepping Stone</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/flower1.svg" alt="1"></div>
+                    <div class="legend-text"><strong>1:</strong> Flower 1</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/flower2.svg" alt="2"></div>
+                    <div class="legend-text"><strong>2:</strong> Flower 2</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/flower3.svg" alt="3"></div>
+                    <div class="legend-text"><strong>3:</strong> Flower 3</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/flower4.svg" alt="4"></div>
+                    <div class="legend-text"><strong>4:</strong> Flower 4</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/flower5.svg" alt="5"></div>
+                    <div class="legend-text"><strong>5:</strong> Flower 5</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/grapple.svg" alt="6"></div>
+                    <div class="legend-text"><strong>6:</strong> Grapple</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/extralife.svg" alt="7"></div>
+                    <div class="legend-text"><strong>7:</strong> Spray (Extra Life)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/diagonal.svg" alt="8"></div>
+                    <div class="legend-text"><strong>8:</strong> Shears (Diagonal)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/ooflower.svg" alt="9"></div>
+                    <div class="legend-text"><strong>9:</strong> Flower Power</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/warp.svg" alt="10"></div>
+                    <div class="legend-text"><strong>10:</strong> Portal (Warp)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-tile"><img src="src/death.svg" alt="11"></div>
+                    <div class="legend-text"><strong>11:</strong> Vine Monster (Death)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getTileImage(value) {
+            const images = {
+                0: 'src/walkthrough.svg',
+                1: 'src/flower1.svg',
+                2: 'src/flower2.svg',
+                3: 'src/flower3.svg',
+                4: 'src/flower4.svg',
+                5: 'src/flower5.svg',
+                6: 'src/grapple.svg',
+                7: 'src/extralife.svg',
+                8: 'src/diagonal.svg',
+                9: 'src/ooflower.svg',
+                10: 'src/warp.svg',
+                11: 'src/death.svg'
+            };
+            return images[value] || 'src/unflipped.svg';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = 'none';
+        }
+
+        function validateBoard(board) {
+            if (!Array.isArray(board)) {
+                return 'Board must be an array';
+            }
+            
+            if (board.length !== 5) {
+                return `Board must have exactly 5 rows (found ${board.length})`;
+            }
+            
+            for (let i = 0; i < board.length; i++) {
+                if (!Array.isArray(board[i])) {
+                    return `Row ${i + 1} must be an array`;
+                }
+                
+                if (board[i].length !== 4) {
+                    return `Row ${i + 1} must have exactly 4 columns (found ${board[i].length})`;
+                }
+                
+                for (let j = 0; j < board[i].length; j++) {
+                    const value = board[i][j];
+                    if (!Number.isInteger(value) || value < 0 || value > 11) {
+                        return `Invalid value ${value} at row ${i + 1}, column ${j + 1}. Must be 0-11`;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        function renderBoard(board) {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            
+            board.forEach((row, rowIndex) => {
+                row.forEach((value, colIndex) => {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    
+                    const img = document.createElement('img');
+                    img.src = getTileImage(value);
+                    img.alt = `Tile ${value}`;
+                    
+                    tile.appendChild(img);
+                    gameBoard.appendChild(tile);
+                });
+            });
+        }
+
+        function visualizeBoard() {
+            hideError();
+            
+            const input = document.getElementById('boardInput').value.trim();
+            
+            if (!input) {
+                showError('Please enter a board configuration');
+                return;
+            }
+            
+            let board;
+            try {
+                board = JSON.parse(input);
+            } catch (e) {
+                showError('Invalid JSON format. Please check your syntax.');
+                return;
+            }
+            
+            const validationError = validateBoard(board);
+            if (validationError) {
+                showError(validationError);
+                return;
+            }
+            
+            renderBoard(board);
+        }
+
+        function clearBoard() {
+            document.getElementById('boardInput').value = '';
+            document.getElementById('gameBoard').innerHTML = '';
+            hideError();
+        }
+
+        function loadExample1() {
+            const example = [
+                [7, 11, 0, 0],
+                [9, 1, 11, 0],
+                [2, 4, 11, 11],
+                [5, 6, 0, 3],
+                [10, 8, 0, 0]
+            ];
+            document.getElementById('boardInput').value = JSON.stringify(example, null, 2);
+            visualizeBoard();
+        }
+
+        function loadExample2() {
+            const example = [
+                [1, 2, 3, 4],
+                [5, 6, 7, 8],
+                [9, 10, 11, 0],
+                [0, 0, 11, 11],
+                [11, 11, 0, 0]
+            ];
+            document.getElementById('boardInput').value = JSON.stringify(example, null, 2);
+            visualizeBoard();
+        }
+
+        function loadRandomBoard() {
+            // Create a random board with proper distribution
+            const tiles = [
+                ...Array(6).fill(0),  // 6 Stepping stones
+                1, 2, 3, 4, 5,        // 5 Flowers
+                6, 7, 8, 9, 10,       // 5 Power-ups
+                ...Array(4).fill(11)  // 4 Death tiles
+            ];
+            
+            // Fisher-Yates shuffle
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+            }
+
+            // Create 5x4 board
+            const board = [];
+            for (let i = 0; i < 5; i++) {
+                board.push(tiles.slice(i * 4, (i + 1) * 4));
+            }
+
+            document.getElementById('boardInput').value = JSON.stringify(board, null, 2);
+            visualizeBoard();
+        }
+
+        // Load example 1 on page load
+        window.addEventListener('load', () => {
+            loadExample1();
+        });
+    </script>
+</body>
+</html>

@@ -47,6 +47,17 @@ class GameState:
             self.flower_power_active
         )
     
+    def validate_state(self, board_solver):
+        """Validate the current game state's validity."""
+        row, col = self.position
+        tile_value = board_solver.get_tile(row, col)
+        
+        # Cannot move to a death tile without active spray
+        if tile_value == 11 and not self.spray_active:
+            raise ValueError(f"Invalid state: Death tile {self.position} without active spray")
+        
+        return True
+
     def is_valid_move(self, next_pos, board_solver):
         """Check if move from current position to next_pos is valid."""
         current_row, current_col = self.position
@@ -56,18 +67,26 @@ class GameState:
         row_diff = abs(next_row - current_row)
         col_diff = abs(next_col - current_col)
         
-        # Movement must be orthogonal or diagonal (if diagonal active)
-        is_valid_move = (
+        # Basic movement validation
+        base_move = (
             (row_diff == 1 and col_diff == 0) or  # Vertical move
             (row_diff == 0 and col_diff == 1) or  # Horizontal move
             (self.diagonal_active and row_diff == 1 and col_diff == 1)  # Diagonal move
         )
         
-        # If move is not orthogonal/diagonal, it is invalid
-        if not is_valid_move:
+        # Special move validation for power-ups
+        special_move_allowed = False
+        current_tile = board_solver.get_tile(current_row, current_col)
+        
+        # Warp power allows moving to ANY tile
+        if current_tile == 10:  # Warp tile
+            special_move_allowed = True
+        
+        # If not a base move or special move, return False
+        if not (base_move or special_move_allowed):
             return False
         
-        # Determine path tiles with precise tracking
+        # Determine path tiles
         path_tiles = []
         
         # Horizontal move
@@ -81,7 +100,7 @@ class GameState:
             path_tiles = [(r, current_col) for r in range(start_row + 1, end_row)]
         
         # Diagonal move (when diagonal is active)
-        elif self.diagonal_active:
+        elif self.diagonal_active or special_move_allowed:
             row_step = 1 if next_row > current_row else -1
             col_step = 1 if next_col > current_col else -1
             r, c = current_row + row_step, current_col + col_step
@@ -93,16 +112,21 @@ class GameState:
         # Check path tiles for death tiles
         for path_tile in path_tiles:
             tile_value = board_solver.get_tile(path_tile[0], path_tile[1])
-            # Completely block movement if death tile is in path
+            
+            # Special handling for power-ups that might neutralize death tiles
             if tile_value == 11:
-                return False
+                # Spray power or special move can neutralize death tiles
+                if not (self.spray_active or special_move_allowed):
+                    return False
         
         # Get tile value at destination
         dest_tile_value = board_solver.get_tile(next_row, next_col)
         
-        # Cannot move onto a death tile 
+        # Handle destination tile
         if dest_tile_value == 11:
-            return False
+            # Can move to death tile ONLY with spray
+            if not self.spray_active:
+                return False
         
         # Cannot revisit non-stepping stone tiles
         if next_pos in self.flipped_tiles:
@@ -146,7 +170,7 @@ class BoardSolver:
         ]
     
     def solve(self) -> Dict:
-        """Find the optimal solution for the board using BFS."""
+        """Find the optimal solution for the board using an advanced search strategy."""
         # Find all edge starting positions
         start_positions = [
             (r, c) for r in range(self.height) 
@@ -154,6 +178,7 @@ class BoardSolver:
             if self.is_edge_tile(r, c)
         ]
         
+        # Store all potential solutions
         solutions = []
         
         # Explore from each starting position
@@ -179,30 +204,40 @@ class BoardSolver:
             queue.extend(starting_states)
             
             iteration = 0
-            max_iterations = 100000
+            max_iterations = 2000000  # Significantly increased search depth
             
             while queue and iteration < max_iterations:
                 iteration += 1
                 current_state = queue.pop(0)
                 
-                # Check signature to avoid revisiting
+                # Extensive logging
+                if iteration % 10000 == 0:
+                    print(f"Iteration {iteration}: Queue size {len(queue)}")
+                    print(f"Current state: Pos {current_state.position}, "
+                        f"Flowers {current_state.collected_flowers}, "
+                        f"Path length {len(current_state.path)}")
+                
+                # Check signature to avoid revisiting similar states
                 sig = current_state.get_signature()
                 if sig in visited:
                     continue
                 visited.add(sig)
                 
-                # Check win condition
+                # Win condition
                 if len(current_state.collected_flowers) == 5:
                     solutions.append(current_state)
-                    continue
+                    print(f"Solution found at iteration {iteration}")
+                    break  # Exit this start position exploration
                 
-                # Get adjacent positions
-                adjacent = self.get_adjacent_positions(
-                    current_state.position[0], current_state.position[1], 
-                    current_state.diagonal_active
-                )
+                # Get ALL possible positions, not just adjacent
+                all_positions = [
+                    (r, c) for r in range(self.height) 
+                    for c in range(self.width)
+                ]
                 
-                for next_pos in adjacent:
+                # Explore ALL possible moves
+                possible_moves = []
+                for next_pos in all_positions:
                     # Use is_valid_move from the state itself
                     if current_state.is_valid_move(next_pos, self):
                         new_state = current_state.copy()
@@ -210,9 +245,19 @@ class BoardSolver:
                         
                         # Process the tile effect at the new position
                         resulting_states = self.process_tile_effect(new_state)
-                        queue.extend(resulting_states)
+                        possible_moves.extend(resulting_states)
+                
+                # Add possible moves to queue
+                queue.extend(possible_moves)
+                
+                # Prevent excessive queue growth
+                if len(queue) > 500000:
+                    queue = queue[:50000]
         
-        # Select optimal solution
+            # Debug print after exploring from a start position
+            print(f"Explored from {start_pos}: {iteration} iterations, {len(solutions)} solutions")
+        
+        # No solutions found
         if not solutions:
             return {
                 'tiles_flipped': -1,
@@ -221,12 +266,17 @@ class BoardSolver:
                 'error': 'No solution found'
             }
         
-        # Sort by tiles flipped, then by number of powers used
-        solutions.sort(key=lambda s: (len(s.flipped_tiles), len(s.powers_used)))
+        # Sort solutions with precise optimization criteria
+        solutions.sort(key=lambda s: (
+            len(set(tuple(pos) for pos in s.path)),  # Primary: Minimize unique tiles flipped
+            len(s.powers_used),                      # Secondary: Minimize power-ups used
+            len(s.path)                              # Tertiary: Arbitrary tiebreaker
+        ))
+        
         best = solutions[0]
         
         return {
-            'tiles_flipped': len(best.flipped_tiles),
+            'tiles_flipped': len(set(tuple(pos) for pos in best.path)),
             'powers_used': sorted(list(best.powers_used)),
             'path': best.path
         }
@@ -308,7 +358,7 @@ class BoardSolver:
         # Death tile (11)
         elif tile_value == 11:
             if state.spray_active:
-                # Neutralize and continue
+                # Neutralize and continue, but consume the spray
                 state.spray_active = False
                 state.neutralized_tiles.add(state.position)
                 new_states.append(state)
@@ -330,7 +380,7 @@ def generate_board(date_string: str) -> List[List[int]]:
     
     return [tiles[i:i+4] for i in range(0, 20, 4)]
 
-def generate_daily_boards(start_date='2025-01-01', num_boards=100):
+def generate_daily_boards(start_date='2025-12-31', num_boards=100):
     """Generate daily boards with solutions."""
     boards = {}
     
@@ -356,7 +406,7 @@ def generate_daily_boards(start_date='2025-01-01', num_boards=100):
 
 # Generate the boards
 print("Starting board generation...")
-daily_boards = generate_daily_boards('2025-12-23', 100)
+daily_boards = generate_daily_boards('2025-12-31', 100)
 
 # Output to JSON file
 output_path = 'boards.json'
@@ -370,7 +420,11 @@ print("\n" + "="*60)
 print("Sample Boards:")
 print("="*60)
 
-for date, board_data in list(daily_boards.items())[:3]:
+n = 0
+
+for date, board_data in list(daily_boards.items()):
+    n+=1
+    print(n)
     print(f"\nDate: {date}")
     print("Board:")
     for row in board_data['board']:
@@ -388,3 +442,5 @@ for date, board_data in list(daily_boards.items())[:3]:
     
     if 'error' in solution:
         print(f"  Error: {solution['error']}")
+        
+    print(f"\n")
