@@ -135,6 +135,36 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s;
+        }
+
+        .tile:hover:not(.flipped):not(.disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .tile.flipped {
+            cursor: default;
+        }
+
+        .tile.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .tile.current {
+            outline: 4px solid #b4ed81;
+            outline-offset: 2px;
+        }
+
+        .tile.valid-move {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        .tile.valid-move:hover {
+            outline: 3px solid #2563eb;
         }
 
         .tile img {
@@ -149,6 +179,121 @@
             padding: 1.5rem;
             background-color: #f9fafb;
             border-radius: 0.75rem;
+        }
+
+        .game-controls {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #eff6ff;
+            border-radius: 0.75rem;
+            border: 2px solid #3b82f6;
+        }
+
+        .game-controls h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #1e40af;
+        }
+
+        .game-info {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .game-info-item {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        .game-info-item strong {
+            color: #1f2937;
+        }
+        
+        .power-status {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .power-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .power-badge.diagonal {
+            background-color: #6366f1;
+        }
+        
+        .power-badge.extra-life {
+            background-color: #ec4899;
+        }
+        
+        .power-badge.any-order {
+            background-color: #14b8a6;
+        }
+        
+        .power-badge.warping {
+            background-color: #06b6d4;
+        }
+        
+        .power-badge.grappling {
+            background-color: #a855f7;
+        }
+
+        .move-output {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #f0fdf4;
+            border-radius: 0.75rem;
+            border: 2px solid #10b981;
+        }
+
+        .move-output h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #065f46;
+        }
+
+        .move-output textarea {
+            width: 100%;
+            min-height: 150px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            background-color: white;
+            border: 1px solid #d1d5db;
+        }
+
+        .copy-button {
+            margin-top: 0.5rem;
+            background-color: #10b981;
+        }
+
+        .copy-button:hover {
+            background-color: #059669;
+        }
+
+        .reset-button {
+            background-color: #ef4444;
+        }
+
+        .reset-button:hover {
+            background-color: #dc2626;
+        }
+
+        .success-message {
+            padding: 1rem;
+            background-color: #d1fae5;
+            border: 1px solid #a7f3d0;
+            border-radius: 0.5rem;
+            color: #065f46;
+            margin-top: 1rem;
+            display: none;
         }
 
         .legend h2 {
@@ -278,6 +423,39 @@
             </div>
         </div>
 
+        <div class="game-controls" id="gameControls" style="display: none;">
+            <h2>🎮 Game Controls</h2>
+            <div class="game-info">
+                <div class="game-info-item">
+                    <strong>Current Position:</strong> <span id="currentPosition">None</span>
+                </div>
+                <div class="game-info-item">
+                    <strong>Moves Made:</strong> <span id="moveCount">0</span>
+                </div>
+                <div class="game-info-item">
+                    <strong>Tiles Flipped:</strong> <span id="tilesFlipped">0</span>
+                </div>
+                <div class="game-info-item">
+                    <strong>Next Goal:</strong> <span id="nextGoal">1</span>
+                </div>
+            </div>
+            <div class="power-status" id="powerStatus"></div>
+            <div class="button-group">
+                <button class="reset-button" onclick="resetGame()">Reset Game</button>
+                <button class="secondary" onclick="undoMove()">Undo Last Move</button>
+            </div>
+        </div>
+
+        <div class="move-output" id="moveOutput" style="display: none;">
+            <h2>📋 Solution Object (Copy this!)</h2>
+            <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">
+                Ready to paste into your boards.json file
+            </p>
+            <textarea id="movePathOutput" readonly></textarea>
+            <button class="copy-button" onclick="copyMoves()">Copy Solution</button>
+            <div id="successMessage" class="success-message"></div>
+        </div>
+
         <div class="legend">
             <h2>Tile Legend</h2>
             <div class="legend-grid">
@@ -334,6 +512,24 @@
     </div>
 
     <script>
+        // Game state
+        let currentBoard = null;
+        let currentPosition = null;
+        let flippedTiles = new Set();
+        let movePath = [];
+        let isPlaying = false;
+        let powersUsed = new Set();
+        
+        // Game mechanics
+        let canMoveDiagonal = false;
+        let hasExtraLife = false;
+        let canSelectAnyGoal = false;
+        let isWarping = false;
+        let isGrappling = false;
+        let grapplePosition = null;
+        let nextGoalTile = 1;
+        let collectedGoals = new Set();
+
         function getTileImage(value) {
             const images = {
                 0: 'src/walkthrough.svg',
@@ -347,7 +543,8 @@
                 8: 'src/diagonal.svg',
                 9: 'src/ooflower.svg',
                 10: 'src/warp.svg',
-                11: 'src/death.svg'
+                11: 'src/death.svg',
+                'unflipped': 'src/unflipped.svg'
             };
             return images[value] || 'src/unflipped.svg';
         }
@@ -361,6 +558,15 @@
         function hideError() {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
         }
 
         function validateBoard(board) {
@@ -392,23 +598,336 @@
             return null;
         }
 
-        function renderBoard(board) {
+        function isValidMove(row, col) {
+            // If warping, can select any unflipped tile
+            if (isWarping) {
+                return !flippedTiles.has(`${row}-${col}`);
+            }
+            
+            // If grappling, can select any tile
+            if (isGrappling) {
+                const [currentRow, currentCol] = currentPosition;
+                
+                // Check if adjacent (orthogonal or diagonal if enabled)
+                const isAdjacent = 
+                    (Math.abs(row - currentRow) === 1 && col === currentCol) ||
+                    (Math.abs(col - currentCol) === 1 && row === currentRow) ||
+                    (canMoveDiagonal && 
+                     Math.abs(row - currentRow) === 1 && 
+                     Math.abs(col - currentCol) === 1);
+                
+                if (isAdjacent) {
+                    return !flippedTiles.has(`${row}-${col}`) || 
+                           (flippedTiles.has(`${row}-${col}`) && currentBoard[row][col] === 0);
+                }
+                
+                // Non-adjacent - can flip any unflipped tile
+                return !flippedTiles.has(`${row}-${col}`);
+            }
+            
+            // If no position set, can only start from edges
+            if (currentPosition === null) {
+                const lastRow = currentBoard.length - 1;
+                const lastCol = currentBoard[0].length - 1;
+                return (row === 0 || row === lastRow) || (col === 0 || col === lastCol);
+            }
+
+            const [currentRow, currentCol] = currentPosition;
+            
+            // Check if orthogonally adjacent
+            const orthogonal = (
+                (Math.abs(row - currentRow) === 1 && col === currentCol) ||
+                (Math.abs(col - currentCol) === 1 && row === currentRow)
+            );
+            
+            // Check if diagonally adjacent (if diagonal movement enabled)
+            const diagonal = canMoveDiagonal && (
+                Math.abs(row - currentRow) === 1 && Math.abs(col - currentCol) === 1
+            );
+
+            // Can move to unflipped tiles or stepping stones (value 0)
+            const canMoveToTile = !flippedTiles.has(`${row}-${col}`) || 
+                                 (flippedTiles.has(`${row}-${col}`) && currentBoard[row][col] === 0);
+
+            return (orthogonal || diagonal) && canMoveToTile;
+        }
+
+        function updateGameInfo() {
+            if (currentPosition) {
+                const [row, col] = currentPosition;
+                document.getElementById('currentPosition').textContent = `Row ${row + 1}, Col ${col + 1}`;
+            } else {
+                document.getElementById('currentPosition').textContent = 'None (Click an edge tile to start)';
+            }
+            
+            document.getElementById('moveCount').textContent = movePath.length;
+            document.getElementById('tilesFlipped').textContent = flippedTiles.size;
+            document.getElementById('nextGoal').textContent = nextGoalTile <= 5 ? nextGoalTile : 'Complete!';
+            
+            // Update power status display
+            const powerStatus = document.getElementById('powerStatus');
+            powerStatus.innerHTML = '';
+            
+            if (canMoveDiagonal) {
+                const badge = document.createElement('div');
+                badge.className = 'power-badge diagonal';
+                badge.textContent = '✂️ Diagonal Movement';
+                powerStatus.appendChild(badge);
+            }
+            
+            if (hasExtraLife) {
+                const badge = document.createElement('div');
+                badge.className = 'power-badge extra-life';
+                badge.textContent = '💚 Extra Life';
+                powerStatus.appendChild(badge);
+            }
+            
+            if (canSelectAnyGoal) {
+                const badge = document.createElement('div');
+                badge.className = 'power-badge any-order';
+                badge.textContent = '🌸 Any Order';
+                powerStatus.appendChild(badge);
+            }
+            
+            if (isWarping) {
+                const badge = document.createElement('div');
+                badge.className = 'power-badge warping';
+                badge.textContent = '🌀 Warping';
+                powerStatus.appendChild(badge);
+            }
+            
+            if (isGrappling) {
+                const badge = document.createElement('div');
+                badge.className = 'power-badge grappling';
+                badge.textContent = '🪝 Grappling';
+                powerStatus.appendChild(badge);
+            }
+            
+            // Update move output in solution format
+            if (movePath.length > 0) {
+                const solutionObject = {
+                    tiles_flipped: flippedTiles.size,
+                    powers_used: Array.from(powersUsed).sort((a, b) => a - b),
+                    path: movePath
+                };
+                
+                // Custom JSON formatting to match exact style
+                let output = '{\n';
+                output += '      "tiles_flipped": ' + solutionObject.tiles_flipped + ',\n';
+                output += '"powers_used": ' + JSON.stringify(solutionObject.powers_used) + ',\n';
+                output += '"path": [\n';
+                
+                // Format path with specific indentation
+                solutionObject.path.forEach((coord, index) => {
+                    const isLast = index === solutionObject.path.length - 1;
+                    output += '        ' + JSON.stringify(coord);
+                    if (!isLast) {
+                        output += ',';
+                    }
+                    output += '\n';
+                });
+                
+                output += '  ]\n';
+                output += '    }';
+                
+                document.getElementById('movePathOutput').value = output;
+                document.getElementById('moveOutput').style.display = 'block';
+            }
+        }
+
+        function handleTileEffect(row, col, tileValue, isGrappleEffect = false) {
+            // Handle flowers (1-5)
+            if (tileValue >= 1 && tileValue <= 5) {
+                if (canSelectAnyGoal || tileValue === nextGoalTile) {
+                    collectedGoals.add(tileValue);
+                    
+                    // Refill extra life if it was used
+                    if (hasExtraLife === false && tileValue === nextGoalTile) {
+                        hasExtraLife = true;
+                    }
+                    
+                    if (canSelectAnyGoal) {
+                        const remainingGoals = new Set([1, 2, 3, 4, 5]);
+                        collectedGoals.forEach(value => {
+                            remainingGoals.delete(value);
+                        });
+                        nextGoalTile = Math.min(...remainingGoals);
+                        canSelectAnyGoal = false;
+                    } else {
+                        nextGoalTile++;
+                    }
+                    
+                    if (collectedGoals.size === 5) {
+                        alert('🎉 Victory! All flowers collected!');
+                        return true;
+                    }
+                } else {
+                    alert(`❌ Wrong order! Need flower ${nextGoalTile}, found ${tileValue}`);
+                    return true;
+                }
+            }
+            
+            // Handle grapple (6) - but not if this IS a grapple effect
+            if (tileValue === 6 && !isGrappleEffect) {
+                powersUsed.add(6);
+                isGrappling = true;
+                grapplePosition = [row, col];
+                return false;
+            }
+            
+            // Handle other power-ups
+            switch (tileValue) {
+                case 7: // Extra Life
+                    powersUsed.add(7);
+                    hasExtraLife = true;
+                    break;
+                    
+                case 8: // Diagonal
+                    powersUsed.add(8);
+                    canMoveDiagonal = true;
+                    break;
+                    
+                case 9: // Any Order
+                    powersUsed.add(9);
+                    canSelectAnyGoal = true;
+                    break;
+                    
+                case 10: // Warp
+                    powersUsed.add(10);
+                    if (!isGrappleEffect) {
+                        isWarping = true;
+                    } else {
+                        isGrappling = false;
+                        isWarping = true;
+                    }
+                    break;
+                    
+                case 11: // Death
+                    if (hasExtraLife) {
+                        hasExtraLife = false;
+                        alert('💚 Extra Life used! Saved from death.');
+                    } else {
+                        alert('☠️ Hit a death tile! Game over.');
+                        return true;
+                    }
+                    break;
+            }
+            
+            return false;
+        }
+
+        async function handleTileClick(row, col) {
+            if (!isPlaying || !isValidMove(row, col)) {
+                return;
+            }
+
+            const tileValue = currentBoard[row][col];
+            
+            // Add to move path
+            movePath.push([row, col]);
+            
+            // Mark as flipped
+            flippedTiles.add(`${row}-${col}`);
+            
+            // Handle warping
+            if (isWarping) {
+                isWarping = false;
+                currentPosition = [row, col];
+                handleTileEffect(row, col, tileValue);
+                renderBoard(currentBoard, true);
+                updateGameInfo();
+                return;
+            }
+            
+            // Handle grappling
+            if (isGrappling) {
+                const [currentRow, currentCol] = currentPosition;
+                const isAdjacent = 
+                    (Math.abs(row - currentRow) === 1 && col === currentCol) ||
+                    (Math.abs(col - currentCol) === 1 && row === currentRow) ||
+                    (canMoveDiagonal && 
+                     Math.abs(row - currentRow) === 1 && 
+                     Math.abs(col - currentCol) === 1);
+                
+                if (isAdjacent) {
+                    // Move to the tile
+                    isGrappling = false;
+                    grapplePosition = null;
+                    currentPosition = [row, col];
+                    handleTileEffect(row, col, tileValue);
+                } else {
+                    // Flip tile but stay on grapple position
+                    const shouldEnd = handleTileEffect(row, col, tileValue, true);
+                    if (!shouldEnd) {
+                        currentPosition = grapplePosition;
+                    }
+                    isGrappling = false;
+                    grapplePosition = null;
+                }
+                
+                renderBoard(currentBoard, true);
+                updateGameInfo();
+                return;
+            }
+            
+            // Normal move
+            currentPosition = [row, col];
+            handleTileEffect(row, col, tileValue);
+            
+            // Re-render to update valid moves
+            renderBoard(currentBoard, true);
+            
+            // Update game info
+            updateGameInfo();
+        }
+
+        function renderBoard(board, keepState = false) {
             const gameBoard = document.getElementById('gameBoard');
             gameBoard.innerHTML = '';
             
+            if (!keepState) {
+                // Reset game state
+                currentPosition = null;
+                flippedTiles.clear();
+                movePath = [];
+            }
+            
             board.forEach((row, rowIndex) => {
                 row.forEach((value, colIndex) => {
-                    const tile = document.createElement('div');
+                    const tile = document.createElement('button');
                     tile.className = 'tile';
+                    tile.setAttribute('data-position', `${rowIndex}-${colIndex}`);
                     
+                    // Just show the tile value directly - no flipping animation needed
                     const img = document.createElement('img');
                     img.src = getTileImage(value);
                     img.alt = `Tile ${value}`;
-                    
                     tile.appendChild(img);
+                    
+                    // Mark current position
+                    if (currentPosition && currentPosition[0] === rowIndex && currentPosition[1] === colIndex) {
+                        tile.classList.add('current');
+                    }
+                    
+                    // Mark valid moves
+                    if (isPlaying && isValidMove(rowIndex, colIndex) && !flippedTiles.has(`${rowIndex}-${colIndex}`)) {
+                        tile.classList.add('valid-move');
+                    }
+                    
+                    // Mark flipped tiles (for visual feedback)
+                    if (flippedTiles.has(`${rowIndex}-${colIndex}`)) {
+                        tile.classList.add('flipped');
+                        tile.style.opacity = '0.7';
+                    }
+                    
+                    // Add click handler
+                    tile.onclick = () => handleTileClick(rowIndex, colIndex);
+                    
                     gameBoard.appendChild(tile);
                 });
             });
+            
+            updateGameInfo();
         }
 
         function visualizeBoard() {
@@ -435,13 +954,101 @@
                 return;
             }
             
+            currentBoard = board;
+            isPlaying = true;
             renderBoard(board);
+            
+            // Show game controls
+            document.getElementById('gameControls').style.display = 'block';
+        }
+
+        function resetGame() {
+            if (!currentBoard) return;
+            
+            currentPosition = null;
+            flippedTiles.clear();
+            movePath = [];
+            powersUsed.clear();
+            
+            // Reset game mechanics
+            canMoveDiagonal = false;
+            hasExtraLife = false;
+            canSelectAnyGoal = false;
+            isWarping = false;
+            isGrappling = false;
+            grapplePosition = null;
+            nextGoalTile = 1;
+            collectedGoals.clear();
+            
+            renderBoard(currentBoard, false);
+            updateGameInfo();
+            
+            document.getElementById('moveOutput').style.display = 'none';
+        }
+
+        function undoMove() {
+            if (movePath.length === 0) return;
+            
+            // Remove last move
+            const lastMove = movePath.pop();
+            const [row, col] = lastMove;
+            
+            // Only remove from flippedTiles if it's not a stepping stone (0)
+            // or if we haven't moved through it multiple times
+            const moveCount = movePath.filter(m => m[0] === row && m[1] === col).length;
+            if (moveCount === 0 && currentBoard[row][col] !== 0) {
+                flippedTiles.delete(`${row}-${col}`);
+            }
+            
+            // Update current position to previous move, or null if no moves left
+            if (movePath.length > 0) {
+                currentPosition = movePath[movePath.length - 1];
+            } else {
+                currentPosition = null;
+            }
+            
+            renderBoard(currentBoard, true);
+            updateGameInfo();
+        }
+
+        function copyMoves() {
+            const output = document.getElementById('movePathOutput');
+            output.select();
+            document.execCommand('copy');
+            
+            // Try modern clipboard API
+            try {
+                navigator.clipboard.writeText(output.value);
+            } catch (e) {
+                console.log('Fallback copy used');
+            }
+            
+            showSuccess('Solution object copied to clipboard!');
         }
 
         function clearBoard() {
             document.getElementById('boardInput').value = '';
             document.getElementById('gameBoard').innerHTML = '';
+            document.getElementById('gameControls').style.display = 'none';
+            document.getElementById('moveOutput').style.display = 'none';
             hideError();
+            
+            currentBoard = null;
+            currentPosition = null;
+            flippedTiles.clear();
+            movePath = [];
+            powersUsed.clear();
+            isPlaying = false;
+            
+            // Reset game mechanics
+            canMoveDiagonal = false;
+            hasExtraLife = false;
+            canSelectAnyGoal = false;
+            isWarping = false;
+            isGrappling = false;
+            grapplePosition = null;
+            nextGoalTile = 1;
+            collectedGoals.clear();
         }
 
         function loadExample1() {
