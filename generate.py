@@ -406,10 +406,10 @@ def generate_daily_boards(start_date='2025-12-31', num_boards=100):
 
 # Generate the boards
 print("Starting board generation...")
-daily_boards = generate_daily_boards('2025-12-31', 100)
+daily_boards = generate_daily_boards('2025-04-15', 16)
 
 # Output to JSON file
-output_path = 'boards.json'
+output_path = 'boards-new.json'
 with open(output_path, 'w') as f:
     json.dump(daily_boards, f, indent=4)
 
