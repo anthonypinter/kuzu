@@ -163,24 +163,36 @@ class TileGame {
         const optimalTiles = this.solutionData.tiles;
         const optimalPowers = this.solutionData.powers;
 
-        // 5 STARS: Matched optimal exactly (MAXIMUM)
+        // 6 STARS (HIDDEN): Better than optimal! 
+        // Fewer tiles with same powers OR fewer powers with same tiles
+        if ((playerTiles < optimalTiles && playerPowers === optimalPowers) ||
+            (playerTiles === optimalTiles && playerPowers < optimalPowers)) {
+            return 6;
+        }
+
+        // 5 STARS: Perfect in both dimensions
         if (playerTiles === optimalTiles && playerPowers === optimalPowers) {
             return 5;
         }
 
-        // 4 STARS: One extra tile OR one extra power (with optimal tiles)
-        if (playerTiles === optimalTiles + 1 || 
-            (playerTiles === optimalTiles && playerPowers === optimalPowers + 1)) {
+        // 4 STARS: Perfect in one dimension, +1 in the other
+        if ((playerTiles === optimalTiles && playerPowers === optimalPowers + 1) || 
+            (playerTiles === optimalTiles + 1 && playerPowers === optimalPowers)) {
             return 4;
         }
 
-        // 3 STARS: Close to optimal
-        if (playerTiles <= optimalTiles + 3 && playerPowers <= optimalPowers + 2) {
+        // 3 STARS: Perfect in one, +2 in the other OR +1 in both
+        if ((playerTiles === optimalTiles && playerPowers <= optimalPowers + 2) ||
+            (playerTiles <= optimalTiles + 2 && playerPowers === optimalPowers) ||
+            (playerTiles === optimalTiles + 1 && playerPowers === optimalPowers + 1)) {
             return 3;
         }
 
-        // 2 STARS: Fair performance
-        if (playerTiles <= optimalTiles + 6 && playerPowers <= optimalPowers + 4) {
+        // 2 STARS: Various combinations of being close
+        if ((playerTiles === optimalTiles && playerPowers <= optimalPowers + 3) ||
+            (playerTiles <= optimalTiles + 3 && playerPowers === optimalPowers) ||
+            (playerTiles === optimalTiles + 1 && playerPowers <= optimalPowers + 2) ||
+            (playerTiles <= optimalTiles + 2 && playerPowers === optimalPowers + 1)) {
             return 2;
         }
 
@@ -190,10 +202,11 @@ class TileGame {
 
     getStarMessage(stars) {
         const messages = {
+            6: "INCREDIBLE! You found a better solution! 🌟",
             5: "Perfect! Matched optimal solution! ⚡",
-            4: "Excellent! One step away from perfect! 👍",
-            3: "Good job! Can you find a shorter path? 💪",
-            2: "Fair! Try to optimize your path. 🎯",
+            4: "Excellent! Perfect in one dimension! 👍",
+            3: "Good! Very close to optimal! 💪",
+            2: "Fair! Try to optimize further. 🎯",
             1: "Puzzle completed! Work on efficiency. 🎲"
         };
         return messages[stars] || messages[1];
@@ -241,20 +254,28 @@ class TileGame {
             stars = this.calculateStars();
         }
         
-        // Display stars visually
-        const starDisplay = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
-        document.getElementById('victoryStars').textContent = starDisplay;
-        
-        // Display star text
-        const starTexts = {
-            5: 'PERFECT! 5 STARS!',
-            4: 'EXCELLENT! 4 STARS!',
-            3: 'GOOD! 3 STARS!',
-            2: 'FAIR! 2 STARS!',
-            1: 'COMPLETED! 1 STAR'
-        };
-        document.getElementById('victoryStarText').textContent = starTexts[stars];
-        document.getElementById('victoryStarMessage').textContent = this.getStarMessage(stars);
+        // Display stars visually (handle 6 stars)
+        if (stars === 6) {
+            // Display 6 stars (5 normal + 1 special) - no celebration on reopen
+            const starDisplay = '⭐'.repeat(5) + '🌟';
+            document.getElementById('victoryStars').textContent = starDisplay;
+            document.getElementById('victoryStarText').textContent = 'INCREDIBLE! 6 STARS!';
+            document.getElementById('victoryStarMessage').textContent = this.getStarMessage(stars);
+        } else {
+            const starDisplay = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
+            document.getElementById('victoryStars').textContent = starDisplay;
+            
+            // Display star text
+            const starTexts = {
+                5: 'PERFECT! 5 STARS!',
+                4: 'EXCELLENT! 4 STARS!',
+                3: 'GOOD! 3 STARS!',
+                2: 'FAIR! 2 STARS!',
+                1: 'COMPLETED! 1 STAR'
+            };
+            document.getElementById('victoryStarText').textContent = starTexts[stars];
+            document.getElementById('victoryStarMessage').textContent = this.getStarMessage(stars);
+        }
         
         // Display player performance
         const playerTiles = this.storedGameResult.tilesRevealed;
@@ -1325,6 +1346,7 @@ class TileGame {
             
             // Add new entry (keep all games ever)
             data.attempts.push(attempts);
+            // Save actual star count (including 6 stars)
             data.stars.push(stars);
             
             localStorage.setItem('kuzu-maze-histogram-data', JSON.stringify(data));
@@ -1358,17 +1380,35 @@ class TileGame {
                 else if (value > 20) buckets[4]++;
             });
         } else if (type === 'stars') {
-            // Stars: 5, 4, 3, 2, 1 (high to low - reversed!)
-            buckets = [0, 0, 0, 0, 0];
-            bucketLabels = ['⭐⭐⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐', '⭐⭐', '⭐'];
+            // Check if player has ever earned 6 stars
+            const hasEarned6Stars = data.some(value => value === 6);
             
-            data.forEach(value => {
-                if (value === 5) buckets[0]++;
-                else if (value === 4) buckets[1]++;
-                else if (value === 3) buckets[2]++;
-                else if (value === 2) buckets[3]++;
-                else if (value === 1) buckets[4]++;
-            });
+            if (hasEarned6Stars) {
+                // Show 6-star row (6, 5, 4, 3, 2, 1 - high to low)
+                buckets = [0, 0, 0, 0, 0, 0];
+                bucketLabels = ['⭐⭐⭐⭐⭐🌟', '⭐⭐⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐', '⭐⭐', '⭐'];
+                
+                data.forEach(value => {
+                    if (value === 6) buckets[0]++;
+                    else if (value === 5) buckets[1]++;
+                    else if (value === 4) buckets[2]++;
+                    else if (value === 3) buckets[3]++;
+                    else if (value === 2) buckets[4]++;
+                    else if (value === 1) buckets[5]++;
+                });
+            } else {
+                // Normal 5-star display (5, 4, 3, 2, 1 - high to low)
+                buckets = [0, 0, 0, 0, 0];
+                bucketLabels = ['⭐⭐⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐', '⭐⭐', '⭐'];
+                
+                data.forEach(value => {
+                    if (value === 5) buckets[0]++;
+                    else if (value === 4) buckets[1]++;
+                    else if (value === 3) buckets[2]++;
+                    else if (value === 2) buckets[3]++;
+                    else if (value === 1) buckets[4]++;
+                });
+            }
         } else {
             // Score: 81-100, 61-80, 41-60, 21-40, 1-20 (high to low - reversed!)
             buckets = [0, 0, 0, 0, 0];
@@ -1396,12 +1436,25 @@ class TileGame {
                 else if (currentValue >= 16 && currentValue <= 20) currentBucketIndex = 3;
                 else if (currentValue > 20) currentBucketIndex = 4;
             } else if (type === 'stars') {
-                // Stars bucket indices (reversed order: 5 at top)
-                if (currentValue === 5) currentBucketIndex = 0;
-                else if (currentValue === 4) currentBucketIndex = 1;
-                else if (currentValue === 3) currentBucketIndex = 2;
-                else if (currentValue === 2) currentBucketIndex = 3;
-                else if (currentValue === 1) currentBucketIndex = 4;
+                // Check if we're showing 6-star histogram
+                const hasEarned6Stars = data.some(value => value === 6);
+                
+                if (hasEarned6Stars) {
+                    // 6-star bucket indices (6, 5, 4, 3, 2, 1)
+                    if (currentValue === 6) currentBucketIndex = 0;
+                    else if (currentValue === 5) currentBucketIndex = 1;
+                    else if (currentValue === 4) currentBucketIndex = 2;
+                    else if (currentValue === 3) currentBucketIndex = 3;
+                    else if (currentValue === 2) currentBucketIndex = 4;
+                    else if (currentValue === 1) currentBucketIndex = 5;
+                } else {
+                    // Normal 5-star bucket indices (5, 4, 3, 2, 1)
+                    if (currentValue === 5) currentBucketIndex = 0;
+                    else if (currentValue === 4) currentBucketIndex = 1;
+                    else if (currentValue === 3) currentBucketIndex = 2;
+                    else if (currentValue === 2) currentBucketIndex = 3;
+                    else if (currentValue === 1) currentBucketIndex = 4;
+                }
             } else {
                 // Score bucket indices (reversed order)
                 if (currentValue >= 81 && currentValue <= 100) currentBucketIndex = 0;
@@ -1494,6 +1547,47 @@ class TileGame {
 
     // Placeholder methods (dailyComplete message removed)
 
+    show6StarCelebration() {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'six-star-overlay';
+        
+        // Create celebration box
+        const celebration = document.createElement('div');
+        celebration.className = 'six-star-celebration';
+        
+        // Determine what was improved
+        const playerTiles = this.victoryStats.tilesRevealed;
+        const playerPowers = this.victoryStats.powersUsed.size;
+        const optimalTiles = this.solutionData.tiles;
+        const optimalPowers = this.solutionData.powers;
+        
+        let improvementText = '';
+        if (playerTiles < optimalTiles && playerPowers === optimalPowers) {
+            const tilesSaved = optimalTiles - playerTiles;
+            improvementText = `You used ${tilesSaved} fewer tile${tilesSaved > 1 ? 's' : ''} than optimal!`;
+        } else if (playerTiles === optimalTiles && playerPowers < optimalPowers) {
+            const powersSaved = optimalPowers - playerPowers;
+            improvementText = `You used ${powersSaved} fewer power${powersSaved > 1 ? 's' : ''} than optimal!`;
+        }
+        
+        celebration.innerHTML = `
+            <h2>🎊 LEGENDARY SOLVE! 🎊</h2>
+            <div class="star-display">⭐⭐⭐⭐⭐🌟</div>
+            <p><strong>You beat the optimal solution!</strong></p>
+            <p>${improvementText}</p>
+            <button id="close6StarBtn">Amazing!</button>
+        `;
+        
+        overlay.appendChild(celebration);
+        document.body.appendChild(overlay);
+        
+        // Close button handler
+        document.getElementById('close6StarBtn').onclick = () => {
+            overlay.remove();
+        };
+    }
+
      showVictoryModal() {
         const modal = document.getElementById('victoryModal');
         modal.classList.remove('hidden');
@@ -1530,20 +1624,34 @@ class TileGame {
         const stars = this.calculateStars();
         const starMessage = this.getStarMessage(stars);
         
-        // Display stars visually
-        const starDisplay = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
-        document.getElementById('victoryStars').textContent = starDisplay;
-        
-        // Display star text
-        const starTexts = {
-            5: 'PERFECT! 5 STARS!',
-            4: 'EXCELLENT! 4 STARS!',
-            3: 'GOOD! 3 STARS!',
-            2: 'FAIR! 2 STARS!',
-            1: 'COMPLETED! 1 STAR'
-        };
-        document.getElementById('victoryStarText').textContent = starTexts[stars];
-        document.getElementById('victoryStarMessage').textContent = starMessage;
+        // Check if 6 stars (better than optimal)
+        if (stars === 6) {
+            // Show celebration overlay first
+            this.show6StarCelebration();
+            
+            // Display 6 stars visually (5 normal + 1 special)
+            const starDisplay = '⭐'.repeat(5) + '🌟';
+            document.getElementById('victoryStars').textContent = starDisplay;
+            
+            // Display 6-star text
+            document.getElementById('victoryStarText').textContent = 'INCREDIBLE! 6 STARS!';
+            document.getElementById('victoryStarMessage').textContent = starMessage;
+        } else {
+            // Display stars visually (normal 1-5 stars)
+            const starDisplay = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
+            document.getElementById('victoryStars').textContent = starDisplay;
+            
+            // Display star text
+            const starTexts = {
+                5: 'PERFECT! 5 STARS!',
+                4: 'EXCELLENT! 4 STARS!',
+                3: 'GOOD! 3 STARS!',
+                2: 'FAIR! 2 STARS!',
+                1: 'COMPLETED! 1 STAR'
+            };
+            document.getElementById('victoryStarText').textContent = starTexts[stars];
+            document.getElementById('victoryStarMessage').textContent = starMessage;
+        }
         
         // Display player performance
         const playerTiles = this.victoryStats.tilesRevealed;
@@ -1576,6 +1684,7 @@ class TileGame {
         // Generate histograms
         const histData = this.loadHistogramData();
         this.generateHistogram('victoryAttemptsHistogram', histData.attempts, 'attempts', this.tryCount);
+        // Pass actual star value (including 6) for proper highlighting
         this.generateHistogram('victoryStarsHistogram', histData.stars, 'stars', stars);
         
         const headerText = this.isRandomMode ? 
