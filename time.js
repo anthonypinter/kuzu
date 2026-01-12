@@ -1034,28 +1034,6 @@ class TileGame {
         document.getElementById('copyResultBtn').onclick = () => {
             // Check if we have stored result (for reopened modal)
             if (this.storedGameResult) {
-                // Format powers with emojis
-                const powerEmojis = {
-                    6: '🪝',  // Grapple
-                    7: '🔫',  // Extra Life (Spray) - Squirt Gun
-                    8: '✂️',  // Diagonal (Shears)
-                    9: '🌼',  // Any Order (Flower Power) - Blossom
-                    10: '🌀'  // Warp (Portal)
-                };
-                
-                let powersText = "";
-                // Check if powersUsed is an array and has items
-                if (Array.isArray(this.storedGameResult.powersUsed) && this.storedGameResult.powersUsed.length > 0) {
-                    const powers = this.storedGameResult.powersUsed
-                        .sort((a, b) => a - b)
-                        .map(power => powerEmojis[power])
-                        .filter(emoji => emoji)
-                        .join(' ');  // Space between emojis
-                    powersText = " " + powers;  // Space before emojis
-                } else {
-                    powersText = "";  // No powers, no emojis
-                }
-                
                 // Get formatted date (M/D/YY format - no leading zeros, 2-digit year)
                 const dateObj = new Date(this.storedGameResult.date);
                 const month = dateObj.getMonth() + 1; // No padding
@@ -1066,7 +1044,16 @@ class TileGame {
                 // Convert attempt number to emoji digits
                 const attemptEmoji = this.numberToEmoji(this.storedGameResult.tryCount);
                 
-                let shareMessage = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}`;
+                // Get stars
+                const stars = this.storedGameResult.stars || 3;
+                let starDisplay;
+                if (stars === 6) {
+                    starDisplay = '⭐'.repeat(5) + '🌟';
+                } else {
+                    starDisplay = '⭐'.repeat(stars);
+                }
+                
+                let shareMessage = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}\n${starDisplay}`;
                 
                 // Add streak ONLY if it's a multiple of 7 (7, 14, 21, etc.) on separate line
                 if (this.storedGameResult.mode === 'Daily' && 
@@ -1706,27 +1693,6 @@ class TileGame {
     }
 
     shareResults() {
-        // Format powers used with emojis
-        const powerEmojis = {
-            6: '🪝',  // Grapple
-            7: '🔫',  // Extra Life (Spray) - Squirt Gun
-            8: '✂️',  // Diagonal (Shears)
-            9: '🌼',  // Any Order (Flower Power) - Blossom
-            10: '🌀'  // Warp (Portal)
-        };
-        
-        let powersText = "";
-        if (this.victoryStats.powersUsed.size === 0) {
-            powersText = "";  // No powers, no emojis
-        } else {
-            const powers = Array.from(this.victoryStats.powersUsed)
-                .sort((a, b) => a - b) // Sort by power ID for consistent order
-                .map(power => powerEmojis[power])
-                .filter(emoji => emoji)
-                .join(' ');  // Space between emojis
-            powersText = " " + powers;  // Space before emojis
-        }
-        
         // Get formatted date (M/D/YY format - no leading zeros, 2-digit year)
         const dateObj = new Date(this.todaysDate);
         const month = dateObj.getMonth() + 1; // No padding
@@ -1739,10 +1705,16 @@ class TileGame {
         
         // Get stars
         const stars = this.calculateStars();
-        const starDisplay = '⭐'.repeat(stars);
+        let starDisplay;
+        if (stars === 6) {
+            // Special display for 6 stars
+            starDisplay = '⭐'.repeat(5) + '🌟';
+        } else {
+            starDisplay = '⭐'.repeat(stars);
+        }
         
-        // Create the message in two-line format with comma (no bullseye)
-        let message = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}${powersText}\n${starDisplay}`;
+        // Create the message in two-line format (no powers)
+        let message = `Kuzu's Maze, ${formattedDate}:\n${attemptEmoji}\n${starDisplay}`;
 
         // Add streak info ONLY if it's a multiple of 7 (7, 14, 21, etc.) on separate line
         if (!this.isRandomMode && this.tryCount <= 20 && this.currentStreak > 0 && this.currentStreak % 7 === 0) {
