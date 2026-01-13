@@ -254,6 +254,9 @@ class TileGame {
             stars = this.calculateStars();
         }
         
+        // Display attempts as number
+        document.getElementById('victoryAttemptNumber').textContent = this.storedGameResult.tryCount;
+        
         // Display stars visually (handle 6 stars)
         if (stars === 6) {
             // Display 6 stars (5 normal + 1 special) - no celebration on reopen
@@ -1610,6 +1613,9 @@ class TileGame {
         // Calculate and display stars
         const stars = this.calculateStars();
         const starMessage = this.getStarMessage(stars);
+        
+        // Display attempts as number
+        document.getElementById('victoryAttemptNumber').textContent = this.tryCount;
         
         // Check if 6 stars (better than optimal)
         if (stars === 6) {

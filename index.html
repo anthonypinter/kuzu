@@ -5,20 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Kuzu's Maze</title>
     
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
     <!-- iOS Specific Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Kuzu's Maze">
+    <link rel="apple-touch-icon" href="src/death.svg">
     
     <!-- Standard Favicon -->
-    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="Kuzu's Maze" />
-    <link rel="manifest" href="/site.webmanifest" />
-
-
+    <link rel="icon" type="image/svg+xml" href="src/death.svg">
+    
     <!-- Prevent text size adjustment on orientation change -->
     <meta name="format-detection" content="telephone=no">
     
@@ -97,8 +95,12 @@
 
             <div id="victoryModal" class="modal hidden">
                 <div class="modal-content">
-                    <div class="modal-header" style="justify-content: center;">
-                        <h2 style="text-align: center;">🎉 Congratulations! 🎉</h2>
+                    <div class="modal-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <h2 style="text-align: center; margin: 0;">🎉 Congratulations! 🎉</h2>
+                        <!-- Attempts Display -->
+                        <div id="victoryAttemptsDisplay" style="font-size: 0.875rem; margin-top: 0.5rem; color: #6b7280; text-align: center; width: 100%;">
+                            You completed the maze in <span id="victoryAttemptNumber" style="font-weight: bold; color: #3b82f6; font-family: 'Righteous', sans-serif;">3</span> attempts
+                        </div>
                     </div>
                     <div class="modal-body">
                         <!-- Star Display -->
@@ -107,7 +109,7 @@
                                 ⭐⭐⭐⭐⭐
                             </div>
                             <p id="victoryStarText" style="font-size: 1.25rem; font-weight: bold; margin: 0.5rem 0; color: #3b82f6;">PERFECT! 5 STARS!</p>
-                            <p id="victoryStarMessage" style="font-size: 0.875rem; color: #6b7280; margin: 0.5rem 0;">Matched Kuzu's solution! ⚡</p>
+                            <p id="victoryStarMessage" style="font-size: 0.875rem; color: #6b7280; margin: 0.5rem 0;">Matched optimal solution! ⚡</p>
                             
                             <!-- Performance Comparison -->
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; padding: 0.75rem; background: #f9fafb; border-radius: 0.5rem;">
@@ -116,7 +118,7 @@
                                     <p id="victoryPlayerStats" style="font-size: 0.875rem; font-weight: bold; margin: 0.25rem 0; color: #374151;">8 tiles | 3 powers</p>
                                 </div>
                                 <div>
-                                    <p style="font-size: 0.65rem; color: #9ca3af; margin: 0;">Kuzu's Solution</p>
+                                    <p style="font-size: 0.65rem; color: #9ca3af; margin: 0;">Optimal Solution</p>
                                     <p id="victoryOptimalStats" style="font-size: 0.875rem; font-weight: bold; margin: 0.25rem 0; color: #374151;">8 tiles | 3 powers</p>
                                 </div>
                             </div>
