@@ -164,9 +164,10 @@ class TileGame {
         const optimalPowers = this.solutionData.powers;
 
         // 6 STARS (HIDDEN): Better than optimal! 
-        // Fewer tiles with same powers OR fewer powers with same tiles
+        // Fewer tiles with same powers OR fewer powers with same tiles OR better in both
         if ((playerTiles < optimalTiles && playerPowers === optimalPowers) ||
-            (playerTiles === optimalTiles && playerPowers < optimalPowers)) {
+            (playerTiles === optimalTiles && playerPowers < optimalPowers) ||
+            (playerTiles < optimalTiles && playerPowers < optimalPowers)) {
             return 6;
         }
 
@@ -1496,12 +1497,22 @@ class TileGame {
     }
 
     updateStreak() {
-        if (this.isRandomMode || this.tryCount > 20) return;
+        if (this.isRandomMode) return;
         
         const streakData = this.loadStreakData();
         
+        // If completed in 21+ attempts, break the streak
+        if (this.tryCount > 20) {
+            this.currentStreak = 0;
+            // Keep bestStreak unchanged
+            this.bestStreak = streakData?.bestStreak || 0;
+            this.saveStreakData();
+            return;
+        }
+        
+        // Normal streak update logic for tryCount <= 20
         if (!streakData || !streakData.lastCompletedDate) {
-            // First time completing
+            // First time completing in 20 or less
             this.currentStreak = 1;
             this.bestStreak = 1;
         } else {
@@ -1515,7 +1526,7 @@ class TileGame {
             
             if (lastDateStr === yesterdayStr) {
                 // Consecutive day - increment streak
-                this.currentStreak++;
+                this.currentStreak = streakData.currentStreak + 1;
                 if (this.currentStreak > this.bestStreak) {
                     this.bestStreak = this.currentStreak;
                 }
