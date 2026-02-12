@@ -163,6 +163,10 @@ class TileGame {
         const optimalTiles = this.solutionData.tiles;
         const optimalPowers = this.solutionData.powers;
 
+        // Calculate deltas
+        const tilesDelta = playerTiles - optimalTiles;
+        const powersDelta = playerPowers - optimalPowers;
+
         // 6 STARS (HIDDEN): Better than optimal! 
         // Fewer tiles with same powers OR fewer powers with same tiles OR better in both
         if ((playerTiles < optimalTiles && playerPowers === optimalPowers) ||
@@ -176,30 +180,41 @@ class TileGame {
             return 5;
         }
 
-        // 4 STARS: Perfect in one dimension, +1 in the other
+        // 4 STARS: Perfect in one dimension, +1 in the other OR equal ±1 tradeoff
         if ((playerTiles === optimalTiles && playerPowers === optimalPowers + 1) || 
-            (playerTiles === optimalTiles + 1 && playerPowers === optimalPowers)) {
+            (playerTiles === optimalTiles + 1 && playerPowers === optimalPowers) ||
+            (tilesDelta === 1 && powersDelta === -1) ||   // +1 tiles, -1 powers
+            (tilesDelta === -1 && powersDelta === 1)) {   // -1 tiles, +1 powers
             return 4;
         }
 
-        // 3 STARS: Perfect in one, +2 in the other OR +1 in both
+        // 3 STARS: Perfect in one, +2 in the other OR +1 in both OR equal ±2 tradeoff OR smaller tradeoffs
         if ((playerTiles === optimalTiles && playerPowers <= optimalPowers + 2) ||
             (playerTiles <= optimalTiles + 2 && playerPowers === optimalPowers) ||
-            (playerTiles === optimalTiles + 1 && playerPowers === optimalPowers + 1)) {
+            (playerTiles === optimalTiles + 1 && playerPowers === optimalPowers + 1) ||
+            (tilesDelta === 2 && powersDelta === -2) ||   // +2 tiles, -2 powers
+            (tilesDelta === -2 && powersDelta === 2) ||   // -2 tiles, +2 powers
+            (tilesDelta === 2 && powersDelta === -1) ||   // +2 tiles, -1 powers
+            (tilesDelta === 1 && powersDelta === -2) ||   // +1 tiles, -2 powers
+            (tilesDelta === -2 && powersDelta === 1) ||   // -2 tiles, +1 powers
+            (tilesDelta === -1 && powersDelta === 2)) {   // -1 tiles, +2 powers
             return 3;
         }
 
-        // 2 STARS: Various combinations of being close
+        // 2 STARS: Various combinations of being close, including larger tradeoffs
         if ((playerTiles === optimalTiles && playerPowers <= optimalPowers + 3) ||
             (playerTiles <= optimalTiles + 3 && playerPowers === optimalPowers) ||
             (playerTiles === optimalTiles + 1 && playerPowers <= optimalPowers + 2) ||
-            (playerTiles <= optimalTiles + 2 && playerPowers === optimalPowers + 1)) {
+            (playerTiles <= optimalTiles + 2 && playerPowers === optimalPowers + 1) ||
+            (Math.abs(tilesDelta) <= 3 && Math.abs(powersDelta) <= 3 && 
+             ((tilesDelta > 0 && powersDelta < 0) || (tilesDelta < 0 && powersDelta > 0)))) {
             return 2;
         }
 
         // 1 STAR: Completed
         return 1;
     }
+
 
     getStarMessage(stars) {
         const messages = {
@@ -1802,7 +1817,32 @@ class TileGame {
 
     showStatsModal() {
         // Load current streak data
-        this.loadStreakData();
+        const streakData = this.loadStreakData();
+        
+        // Check if today's puzzle is completed
+        const dailyData = this.loadDailyProgress();
+        const completedToday = dailyData && dailyData.date === this.todaysDate && dailyData.completed;
+        
+        // Determine what streak to display
+        let displayStreak = this.currentStreak;
+        
+        // If today's puzzle is NOT completed yet, check if streak should already be broken
+        if (!completedToday && streakData && streakData.lastCompletedDate) {
+            const lastDate = new Date(streakData.lastCompletedDate);
+            const today = new Date(this.todaysDate);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            const lastDateStr = lastDate.toISOString().split('T')[0];
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            // If last completion was NOT yesterday (and not today), streak is broken
+            if (lastDateStr !== yesterdayStr && lastDateStr !== this.todaysDate) {
+                displayStreak = 0;
+            }
+            // If last completion WAS yesterday, streak is still active - show it
+            // If currentStreak is already 0 (from 21+ attempt completion), show 0
+        }
         
         // Load game stats
         const gameStats = this.loadGameStats();
@@ -1811,7 +1851,7 @@ class TileGame {
         // Update the stats display
         document.getElementById('statsTotalPlays').textContent = gameStats.totalDays;
         document.getElementById('statsWinRate').textContent = winRate + '%';
-        document.getElementById('statsCurrentStreak').textContent = this.currentStreak;
+        document.getElementById('statsCurrentStreak').textContent = displayStreak;
         document.getElementById('statsMaxStreak').textContent = this.bestStreak;
         
         // Generate histograms (without highlighting current value)
