@@ -1645,9 +1645,6 @@ class TileGame {
         
         // Check if 6 stars (better than optimal)
         if (stars === 6) {
-            // Show celebration overlay first
-            this.show6StarCelebration();
-            
             // Display 6 stars visually (5 normal + 1 special)
             const starDisplay = '⭐'.repeat(5) + '🌟';
             document.getElementById('victoryStars').textContent = starDisplay;
