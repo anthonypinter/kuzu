@@ -2014,7 +2014,7 @@ class TileGame {
 }
 }
 
-// Async initialization
+// Async initializatioan
 document.addEventListener('DOMContentLoaded', async () => {
     const game = new TileGame();
     await game.initialize();
