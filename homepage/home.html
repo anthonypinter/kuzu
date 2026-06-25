@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100dvh;
+            overflow: hidden;
+            background-color: #f7e9d5;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100dvh;
+            padding: 5dvh 5vw;
+        }
+
+        /* Shrinks to exactly the rendered image size so the button can be
+           percentage-positioned relative to home.svg's coordinate space.
+           home.svg viewBox: 873.41 × 2036.96 */
+        .image-wrapper {
+            position: relative;
+            width: min(90vw, calc(90dvh * 873.41 / 2036.96));
+            aspect-ratio: 873.41 / 2036.96;
+            container-type: inline-size;
+        }
+
+        /* Date / puzzle labels flanking the flower.
+           Flower sits in the band y=1545–1649 (centre 78.4% from top).
+           Left area centre x ≈ 21%, right area centre x ≈ 79%.
+           font-size in cqw scales with the wrapper width automatically. */
+        .date-label,
+        .puzzle-label {
+            position: absolute;
+            top: 78.4%;
+            transform: translate(-50%, -50%);
+            font-family: 'Space Mono', monospace;
+            font-size: 3.5cqw;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            color: #081a1d;
+            white-space: nowrap;
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+
+        .date-label   { left: 21%; }
+        .puzzle-label { left: 79%; }
+
+        .image-wrapper > img {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Shared styles for both overlay buttons */
+        .tutorial-btn,
+        .howtoplay-btn {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tutorial-btn img,
+        .howtoplay-btn img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .tutorial-btn:hover img,
+        .tutorial-btn:focus img,
+        .howtoplay-btn:hover img,
+        .howtoplay-btn:focus img {
+            opacity: 0.88;
+        }
+
+        .tutorial-btn:active img,
+        .howtoplay-btn:active img {
+            opacity: 0.7;
+        }
+
+        /* Enter button — D-pad elements bracket y ≈ 1285–1466 (63–72% from top).
+           button.svg is 516.28 wide ≈ 59% of home.svg's 873.41 width.
+           Adjust `top` if the blank space sits higher or lower. */
+        .tutorial-btn {
+            top: 63%;
+            width: 59%;
+        }
+
+        /* How-to-play button — below the flower.
+           Flower center y=1597.74, bottom edge ≈ y=1678 (82%).
+           Bottom divider at y=1873 (92%). Space centre ≈ 87%.
+           howtoplay.svg is 567.43 wide ≈ 65% of home.svg's 873.41 width.
+           Adjust `top` if the blank space sits higher or lower. */
+        .howtoplay-btn {
+            top: 84%;
+            width: 65%;
+        }
+
+        /* Stellar logo — anchored to the very bottom of the frame.
+           Below the last divider at y=1873 (92%–100%).
+           stellar.svg is 180.67 wide ≈ 21% of home.svg's 873.41 width. */
+        .stellar-logo {
+            position: absolute;
+            left: 50%;
+            bottom: 2%;
+            transform: translateX(-50%);
+            width: 21%;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .stellar-logo img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .stellar-logo:hover img,
+        .stellar-logo:focus img {
+            opacity: 0.75;
+        }
+
+        .image-wrapper {
+            transition: opacity 0.6s ease;
+        }
+
+        .image-wrapper.fade-out {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="image-wrapper">
+            <img src="home.svg" alt="How to play">
+            <span class="date-label">JUN 05 2026</span>
+            <span class="puzzle-label">PUZZLE #001</span>
+            <a class="tutorial-btn" href="#" id="enter-btn">
+                <img src="button.svg" alt="Continue">
+            </a>
+            <a class="howtoplay-btn" href="#">
+                <img src="howtoplay.svg" alt="How to play">
+            </a>
+            <a class="stellar-logo" href="https://stellarfactory.com" target="_blank" rel="noopener noreferrer">
+                <img src="stellar.svg" alt="Stellar Factory">
+            </a>
+        </div>
+    </div>
+    <script>
+        document.getElementById('enter-btn').addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector('.image-wrapper').classList.add('fade-out');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Tutorial — Kuzu's Maze</title>
+    <meta name="theme-color" content="#f7e9d5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100dvh;
+            overflow: hidden;
+            background-color: #f7e9d5;
+        }
+
+        .tut-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100dvh;
+            padding: 5dvh 5vw;
+        }
+
+        /* Same width constraint as the home screen wrapper */
+        .tut-wrapper {
+            display: flex;
+            flex-direction: column;
+            width: min(90vw, calc(90dvh * 873.41 / 2036.96));
+            height: 90dvh;
+        }
+
+        /* ── Header: lines.svg with title overlaid between the two rules ── */
+        .tut-header {
+            flex-shrink: 0;
+            position: relative;
+            width: 100%;
+        }
+
+        .tut-header > .tut-lines {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Title sits centred between the two lines.
+           lines.svg: top rule y=4.5, bottom rule y=141.5, total height=146 → band centre = 50%.
+           title.svg width ≈ 800.4 / 915.73 = 87.4% of the lines width. */
+        .tut-title {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 87.4%;
+            height: auto;
+            display: block;
+        }
+
+        /* ── Content: text pinned to top, any illustration below ── */
+        .tut-header,
+        .tut-content {
+            transition: opacity 0.25s ease;
+        }
+
+        .tut-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: hidden;
+            padding-top: 5%;
+            position: relative;
+        }
+
+        /* text.svg width matches the title inset ratio */
+        .tut-text {
+            width: 87.4%;
+            height: auto;
+            display: block;
+            transition: opacity 0.25s ease;
+        }
+
+        .tut-text.fade-out {
+            opacity: 0;
+        }
+
+        /* Illustration fills whatever vertical space remains below the text */
+        .tut-illustration-wrap {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            position: relative;
+        }
+
+        .tut-illustration {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Centred overlay on top of the illustration.
+           Width is sized relative to the illustration container so it scales
+           with the circle: 99.54 / 688.97 ≈ 14.45% of the circle's rendered size.
+           The circle fills the container, so we use the container as reference. */
+        .tut-illustration-center {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 14.45%;
+            height: auto;
+            display: block;
+            pointer-events: none;
+        }
+
+        /* Animated flower SVG inlined over the circle.
+           524.4 / 688.97 ≈ 76.1% of the circle's rendered size. */
+        .tut-flower-svg {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 76.1%;
+            height: auto;
+            pointer-events: none;
+            overflow: visible;
+        }
+
+        /* Each petal scales in from the flower's centre (50%/50% of its viewBox).
+           transform-box: view-box anchors the origin to the SVG coordinate space. */
+        .tut-flower-svg path {
+            transform-box: view-box;
+            transform-origin: 50% 50%;
+            opacity: 0;
+            animation: petal-in 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+        }
+
+        /* 0.35s between each start → next petal begins when current is 70% done */
+        .tut-flower-svg #p1 { animation-delay: 0.00s; }
+        .tut-flower-svg #p2 { animation-delay: 0.35s; }
+        .tut-flower-svg #p3 { animation-delay: 0.70s; }
+        .tut-flower-svg #p4 { animation-delay: 1.05s; }
+        .tut-flower-svg #p5 { animation-delay: 1.40s; }
+        .tut-flower-svg #p6 { animation-delay: 1.75s; }
+        .tut-flower-svg #p7 { animation-delay: 2.10s; }
+        .tut-flower-svg #p8 { animation-delay: 2.45s; }
+
+        @keyframes petal-in {
+            from { opacity: 0; transform: scale(0); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes tut-fade-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        /* Flower shown instantly when revisiting a step (intro already played) */
+        .tut-flower-svg.no-anim path {
+            animation: none;
+            opacity: 1;
+        }
+
+        /* ── Page 2: animated tile rows ── */
+        .tut-tiles-wrap {
+            width: 100%;
+            overflow: hidden;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .tut-tile-row {
+            width: 100%;
+            height: auto;
+            display: block;
+            animation-duration: 1.0s;
+            animation-timing-function: cubic-bezier(0.34, 1.1, 0.64, 1);
+            animation-fill-mode: both;
+        }
+
+        /* margin-top resolves against container width; 3.05% aligns with page2-grid.svg */
+        .tut-tile-row + .tut-tile-row {
+            margin-top: 3.05%;
+        }
+
+        .tut-tile-row.from-left  { animation-name: tile-from-left; }
+        .tut-tile-row.from-right { animation-name: tile-from-right; }
+
+        .tut-tile-row-html {
+            display: flex;
+            align-items: center;
+            padding: 0 calc(1.52 / 695.21 * 100%);
+            gap: calc(24.47 / 695.21 * 100%);
+            width: 100%;
+            box-sizing: border-box;
+            aspect-ratio: calc(695.21 / 157.74);
+        }
+        .tut-tile-row-html + .tut-tile-row-html { margin-top: 3.05%; }
+
+        .tut-tile-cell {
+            flex: 1;
+            aspect-ratio: 1;
+            background: #071b1e;
+            border-radius: 7.9%;
+            position: relative;
+        }
+
+        @keyframes tile-from-left {
+            from { transform: translateX(-105%); }
+            to   { transform: translateX(0); }
+        }
+
+        @keyframes tile-from-right {
+            from { transform: translateX(105%); }
+            to   { transform: translateX(0); }
+        }
+
+        /* ── Page 3: tile flip animation ── */
+        .flip-card {
+            position: absolute;
+            perspective: 700px;
+            background: #f7e9d5;
+            border-radius: 7.9%;
+        }
+
+        .flip-card-inner {
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: tile-flip 1.0s ease-in-out both;
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 7.9%;
+            overflow: hidden;
+        }
+
+
+        .flip-card-front img,
+        .flip-card-back img {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .flip-card-back img {
+            transform: scale(1.03);
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+            background: #f7e9d5;
+        }
+
+        @keyframes tile-flip {
+            from { transform: rotateY(0deg); }
+            to   { transform: rotateY(180deg); }
+        }
+
+        @keyframes tile-jiggle {
+            0%   { transform: rotate(0deg); }
+            20%  { transform: rotate(-6deg); }
+            40%  { transform: rotate(6deg); }
+            60%  { transform: rotate(-4deg); }
+            80%  { transform: rotate(3deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        @keyframes tile-flip-back {
+            from { transform: rotateY(180deg); }
+            to   { transform: rotateY(0deg); }
+        }
+
+        .tut-tile-cell.jiggle {
+            animation: tile-jiggle 1.0s ease-in-out both;
+        }
+
+        /* ── Footer: tap-to-continue indicator ── */
+        .tut-nav {
+            flex-shrink: 0;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 906.73 / 144.77;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tut-tap-hint {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.8cqw;
+            letter-spacing: 0.12em;
+            color: #071b1e;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            animation: tap-pulse 2.4s ease-in-out infinite;
+            text-transform: lowercase;
+            user-select: none;
+        }
+
+        .tut-tap-hint.visible { opacity: 0.4; }
+
+        @keyframes tap-pulse {
+            0%, 100% { opacity: 0.4; }
+            50%       { opacity: 0.2; }
+        }
+
+        .tut-play-btn {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            transition: opacity 0.15s ease;
+        }
+        .tut-play-btn:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="tut-container">
+        <div class="tut-wrapper">
+
+            <div class="tut-header" id="tut-header">
+                <img class="tut-lines" src="tutorial/lines.svg" alt="">
+                <img class="tut-title" id="tut-title" src="" alt="" hidden>
+            </div>
+
+            <div class="tut-content" id="tut-content">
+                <!-- step SVG rendered here by JS -->
+            </div>
+
+            <div class="tut-nav" id="tut-nav">
+                <div class="tut-tap-hint" id="tut-tap-hint">click to continue</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // step fields:
+        //   title        → SVG overlaid between the header lines
+        //   text         → SVG shown at top of content area
+        //   illustration → base image behind the flower
+        //   flower       → animated petal SVG, fetched and inlined
+        //   center       → static overlay centred on the illustration
+        // titleWidth / textWidth: % of the lines.svg width (915.73px reference).
+        // Omit to use the CSS default (87.4%).
+        const steps = [
+            {
+                title:        'tutorial/page1-title.svg',
+                text:         'tutorial/page1-text.svg',
+                illustration: 'tutorial/page1-empty-circle.svg',
+                flower:       'tutorial/page1-flower.svg',
+                center:       'tutorial/page1-center-flower.svg',
+            },
+            {
+                noPrev:     true,
+                title:      'tutorial/page2-title.svg',
+                titleWidth: '66.9%',
+                text:       'tutorial/page2-text.svg',
+                textWidth:  '84.8%',
+                tiles:      'tutorial/page2-tiles.svg',
+                grid:       'tutorial/page2-grid.svg',
+            },
+            {
+                keepTiles:  true,
+                title:      'tutorial/page3-title.svg',
+                titleWidth: '55.3%',
+                text:       'tutorial/page3-text.svg',
+                textWidth:  '69.8%',
+                flowerBack: 'tutorial/page3-flowerback.svg',
+                flowers:    ['tutorial/page3-flower1.svg', 'tutorial/page3-flower2.svg', 'tutorial/page3-flower3.svg', 'tutorial/page3-flower4.svg', 'tutorial/page3-flower5.svg'],
+            },
+            {
+                keepTiles:     true,
+                sequenceText:  true,
+                jiggleFlowers: true,
+                title:         'tutorial/page4-title.svg',
+                titleWidth:    '100%',
+                text:          'tutorial/page4-text.svg',
+                textWidth:     '95.8%',
+            },
+            {
+                keepTiles:       true,
+                flipBackFlowers: true,
+                sequenceText:    true,
+                lines:           'tutorial/page5-lines.svg',
+                title:           'tutorial/page5-title.svg',
+                text:            'tutorial/page5-text.svg',
+                monster:         'tutorial/page5-monster.svg',
+                monsterFlips:    [
+                    { row: 0, col: 3 },
+                    { row: 1, col: 1 },
+                    { row: 3, col: 2 },
+                    { row: 4, col: 0 },
+                ],
+            },
+            {
+                fromMonsterFlips: true,
+                keepTiles:        true,
+                sequenceText:     true,
+                title:            'tutorial/page6-title.svg',
+                titleWidth:       '47.2%',
+                text:             'tutorial/page6-text.svg',
+                tileFlips: [
+                    { row: 0, col: 1, src: 'tutorial/page6-potion.svg'  },
+                    { row: 1, col: 0, src: 'tutorial/page6-shears.svg'  },
+                    { row: 2, col: 3, src: 'tutorial/page6-flower.svg'  },
+                    { row: 3, col: 1, src: 'tutorial/page6-warp.svg'    },
+                    { row: 4, col: 2, src: 'tutorial/page6-grapple.svg' },
+                ],
+            },
+            {
+                keepTiles:     true,
+                keepText:      true,
+                fadeUnflipped: true,
+                title:         'tutorial/page7-title.svg',
+                titleWidth:    '79.4%',
+                powerLabels: [
+                    { row: 0, col: 1, src: 'tutorial/page7-potion.svg',  svgW: 486.23, svgH: 96.5 },
+                    { row: 1, col: 0, src: 'tutorial/page7-shears.svg',  svgW: 542.77, svgH: 96.5 },
+                    { row: 2, col: 3, src: 'tutorial/page7-flower.svg',  svgW: 542.39, svgH: 96.5 },
+                    { row: 3, col: 1, src: 'tutorial/page7-portal.svg',  svgW: 479.32, svgH: 96.5 },
+                    { row: 4, col: 2, src: 'tutorial/page7-grapple.svg', svgW: 391.88, svgH: 96.5 },
+                ],
+            },
+        ];
+
+        let currentStep  = 0;
+        let introPlaying = false;
+        let navDir       = 1; // 1 = forward, -1 = backward
+
+        const headerEl  = document.getElementById('tut-header');
+        const contentEl = document.getElementById('tut-content');
+        const titleEl   = document.getElementById('tut-title');
+        const navEl = document.getElementById('tut-nav');
+
+        function restoreNav() {
+            if (!document.getElementById('tut-tap-hint')) {
+                navEl.innerHTML = '<div class="tut-tap-hint" id="tut-tap-hint">click to continue</div>';
+            }
+        }
+
+        function setNavActive(active) {
+            const el = document.getElementById('tut-tap-hint');
+            if (el) el.classList.toggle('visible', active);
+        }
+
+        document.querySelector('.tut-container').addEventListener('click', e => {
+            if (introPlaying) return;
+            if (currentStep === steps.length - 1) { window.location.href = 'index.html'; return; }
+            if (e.clientX < window.innerWidth * 0.25) {
+                if (currentStep > 0 && !steps[currentStep].noPrev) { navDir = -1; currentStep--; render(true); }
+            } else {
+                navDir = 1; currentStep++; render(true);
+            }
+        });
+
+        async function fetchSVG(url) {
+            const res  = await fetch(url);
+            const text = await res.text();
+            return new DOMParser().parseFromString(text, 'image/svg+xml').querySelector('svg');
+        }
+
+        // Builds the full 5×4 HTML tile grid with all flowers already revealed.
+        // Used when navigating backward to page 3 after the DOM was cleared.
+        function buildRevealedTileGrid(step) {
+            const flips = [
+                { row: 0, col: 0 }, { row: 1, col: 2 }, { row: 2, col: 0 },
+                { row: 3, col: 3 }, { row: 4, col: 1 },
+            ];
+            const flipMap = new Map(flips.map((f, i) => [`${f.row}-${f.col}`, i]));
+
+            const outer = document.createElement('div');
+            outer.className = 'tut-illustration-wrap';
+            const wrap = document.createElement('div');
+            wrap.className = 'tut-tiles-wrap';
+
+            for (let rowIdx = 0; rowIdx < 5; rowIdx++) {
+                const row = document.createElement('div');
+                row.className = 'tut-tile-row-html';
+
+                for (let col = 0; col < 4; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'tut-tile-cell';
+
+                    const flipIdx = flipMap.get(`${rowIdx}-${col}`);
+                    if (flipIdx !== undefined) {
+                        const card = document.createElement('div');
+                        card.className = 'flip-card';
+                        card.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+
+                        const inner = document.createElement('div');
+                        inner.className = 'flip-card-inner';
+                        inner.style.animation = 'none';
+                        inner.style.transform = 'rotateY(180deg)';
+
+                        const front = document.createElement('div');
+                        front.className = 'flip-card-front';
+                        const fi = document.createElement('img');
+                        fi.src = step.flowerBack; fi.alt = '';
+                        front.appendChild(fi);
+
+                        const back = document.createElement('div');
+                        back.className = 'flip-card-back';
+                        const bi = document.createElement('img');
+                        bi.src = step.flowers[flipIdx]; bi.alt = '';
+                        back.appendChild(bi);
+
+                        inner.appendChild(front);
+                        inner.appendChild(back);
+                        card.appendChild(inner);
+                        cell.appendChild(card);
+                    } else {
+                        const img = document.createElement('img');
+                        img.src = step.flowerBack; img.alt = '';
+                        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+                        cell.appendChild(img);
+                    }
+
+                    row.appendChild(cell);
+                }
+                wrap.appendChild(row);
+            }
+
+            outer.appendChild(wrap);
+            return outer;
+        }
+
+        async function applyStep() {
+            const step     = steps[currentStep];
+            const runIntro = currentStep === 0 && !step._played;
+
+            // Lines SVG (header decoration)
+            const linesEl = headerEl.querySelector('.tut-lines');
+            if (linesEl) linesEl.src = step.lines || 'tutorial/lines.svg';
+
+            // Title
+            if (step.title) {
+                titleEl.src         = step.title;
+                titleEl.hidden      = false;
+                titleEl.style.width = step.titleWidth || '87.4%';
+            } else {
+                titleEl.hidden = true;
+                titleEl.src    = '';
+            }
+
+            // keepTiles steps: keep the illustration wrap, only swap text + grid overlay
+            if (step.keepTiles) {
+                let illusWrap = contentEl.querySelector('.tut-illustration-wrap');
+                // Pin the illustration area to its exact pixel position so text
+                // changes above it can never shift the tiles or grid overlay
+                if (illusWrap) {
+                    const top = illusWrap.offsetTop;
+                    const h   = illusWrap.offsetHeight;
+                    illusWrap.style.position = 'absolute';
+                    illusWrap.style.top      = top + 'px';
+                    illusWrap.style.left     = '0';
+                    illusWrap.style.width    = '100%';
+                    illusWrap.style.height   = h + 'px';
+                } else if (step.flowers) {
+                    // DOM was cleared by a non-keepTiles step (e.g. navigating back
+                    // from page 4). Rebuild the grid with flowers already revealed.
+                    illusWrap = buildRevealedTileGrid(step);
+                    contentEl.appendChild(illusWrap);
+                }
+                if (!step.keepText) contentEl.querySelector('.tut-text')?.remove();
+                contentEl.querySelector('.tut-grid-overlay')?.remove();
+
+                if (step.flowers) {
+                    const flips = [
+                        { row: 0, col: 0 }, // flower 1
+                        { row: 1, col: 2 }, // flower 2
+                        { row: 2, col: 0 }, // flower 3
+                        { row: 3, col: 3 }, // flower 4
+                        { row: 4, col: 1 }, // flower 5
+                    ];
+                    const flipMap = new Map(flips.map((f, i) => [`${f.row}-${f.col}`, i]));
+
+                    const tilesWrap = illusWrap?.querySelector('.tut-tiles-wrap');
+                    if (tilesWrap) {
+                        const rows = tilesWrap.querySelectorAll('.tut-tile-row');
+                        if (rows.length > 0) {
+                            // Replace each SVG img row with an HTML tile row so flip
+                            // cards are self-contained cells — no underlying dark tile
+                            // to bleed through the flip card edges.
+                            rows.forEach((rowEl, rowIdx) => {
+                                const newRow = document.createElement('div');
+                                newRow.className = 'tut-tile-row-html';
+
+                                for (let col = 0; col < 4; col++) {
+                                    const cell = document.createElement('div');
+                                    cell.className = 'tut-tile-cell';
+
+                                    const flipIdx = flipMap.get(`${rowIdx}-${col}`);
+                                    if (flipIdx !== undefined) {
+                                        const card = document.createElement('div');
+                                        card.className = 'flip-card';
+                                        card.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+
+                                        const inner = document.createElement('div');
+                                        inner.className = 'flip-card-inner';
+                                        // 0.35s bakes in the transition wait so animation
+                                        // starts ~630ms after click, same as before
+                                        inner.style.animationDelay = (0.35 + flipIdx * 0.6) + 's';
+
+                                        const front = document.createElement('div');
+                                        front.className = 'flip-card-front';
+                                        const frontImg = document.createElement('img');
+                                        frontImg.src = step.flowerBack;
+                                        frontImg.alt = '';
+                                        front.appendChild(frontImg);
+
+                                        const back = document.createElement('div');
+                                        back.className = 'flip-card-back';
+                                        const backImg = document.createElement('img');
+                                        backImg.src = step.flowers[flipIdx];
+                                        backImg.alt = '';
+                                        back.appendChild(backImg);
+
+                                        inner.appendChild(front);
+                                        inner.appendChild(back);
+                                        card.appendChild(inner);
+                                        cell.appendChild(card);
+                                    } else {
+                                        const img = document.createElement('img');
+                                        img.src = step.flowerBack;
+                                        img.alt = '';
+                                        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+                                        cell.appendChild(img);
+                                    }
+
+                                    newRow.appendChild(cell);
+                                }
+
+                                tilesWrap.replaceChild(newRow, rowEl);
+                            });
+                            introPlaying = true;
+                            setNavActive(false);
+                            var lastFlowerMs = 350 + (flips.length - 1) * 600 + 1000 + 150;
+                            setTimeout(() => {
+                                introPlaying = false;
+                                setNavActive(true);
+                            }, lastFlowerMs);
+                        } else {
+                            // Already HTML rows (e.g. navigating back after a flip-back).
+                            // Snap all revealed cards back to showing flowers.
+                            tilesWrap.querySelectorAll('.flip-card-inner').forEach(inner => {
+                                inner.style.animation = 'none';
+                                inner.style.transform = 'rotateY(180deg)';
+                            });
+                        }
+                    }
+                }
+
+                if (step.text) {
+                    const img = document.createElement('img');
+                    img.className = 'tut-text';
+                    img.src       = step.text;
+                    img.alt       = `Tutorial step ${currentStep + 1}`;
+                    if (step.textWidth) img.style.width = step.textWidth;
+                    if (step.sequenceText) img.style.opacity = '0';
+                    illusWrap ? contentEl.insertBefore(img, illusWrap) : contentEl.appendChild(img);
+                }
+                return;
+            }
+
+            contentEl.innerHTML = '';
+
+            if (runIntro) {
+                // ── Sequential intro for step 0 ──────────────────────────────
+                step._played     = true;
+                introPlaying     = true;
+                setNavActive(false);
+
+                // t=0 — header (lines + title) fade in
+                headerEl.style.animation = 'tut-fade-in 0.4s ease both';
+
+                // t=0.5s — text fades in
+                if (step.text) {
+                    const img = document.createElement('img');
+                    img.className       = 'tut-text';
+                    img.src             = step.text;
+                    img.alt             = 'Tutorial step 1';
+                    img.style.animation = 'tut-fade-in 0.4s ease 0.5s both';
+                    if (step.textWidth) img.style.width = step.textWidth;
+                    contentEl.appendChild(img);
+                }
+
+                // t=1.0s — circle + center flower fade in
+                if (step.illustration) {
+                    const wrap = document.createElement('div');
+                    wrap.className       = 'tut-illustration-wrap';
+                    wrap.style.animation = 'tut-fade-in 0.4s ease 1.0s both';
+
+                    const base = document.createElement('img');
+                    base.className = 'tut-illustration';
+                    base.src       = step.illustration;
+                    base.alt       = '';
+                    wrap.appendChild(base);
+
+                    if (step.center) {
+                        const cImg = document.createElement('img');
+                        cImg.className = 'tut-illustration-center';
+                        cImg.src       = step.center;
+                        cImg.alt       = '';
+                        wrap.appendChild(cImg);
+                    }
+
+                    contentEl.appendChild(wrap);
+
+                    // t=1.5s — flower petals inserted; they animate themselves
+                    setTimeout(async () => {
+                        const svgEl = await fetchSVG(step.flower);
+                        svgEl.classList.add('tut-flower-svg');
+                        wrap.insertBefore(svgEl, wrap.querySelector('.tut-illustration-center'));
+
+                        // t≈4.45s — last petal (delay 2.45s + duration 0.5s = 2.95s after insert)
+                        setTimeout(() => {
+                            introPlaying = false;
+                            setNavActive(true);
+                        }, 2950);
+                    }, 1500);
+                }
+
+            } else {
+                // ── Normal render (steps > 0, or revisiting step 0) ──────────
+                if (step.text) {
+                    const img = document.createElement('img');
+                    img.className = 'tut-text';
+                    img.src       = step.text;
+                    img.alt       = `Tutorial step ${currentStep + 1}`;
+                    if (step.textWidth) img.style.width = step.textWidth;
+                    contentEl.appendChild(img);
+                }
+
+                if (step.illustration) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'tut-illustration-wrap';
+
+                    const base = document.createElement('img');
+                    base.className = 'tut-illustration';
+                    base.src       = step.illustration;
+                    base.alt       = '';
+                    wrap.appendChild(base);
+
+                    contentEl.appendChild(wrap);
+
+                    if (step.flower) {
+                        const svgEl = await fetchSVG(step.flower);
+                        // Intro already played — show petals instantly
+                        svgEl.classList.add('tut-flower-svg', 'no-anim');
+                        wrap.appendChild(svgEl);
+                    }
+
+                    if (step.center) {
+                        const cImg = document.createElement('img');
+                        cImg.className = 'tut-illustration-center';
+                        cImg.src       = step.center;
+                        cImg.alt       = '';
+                        wrap.appendChild(cImg);
+                    }
+                }
+
+                if (step.tiles) {
+                    // Lock nav until all tile + grid animations complete
+                    introPlaying     = true;
+                    setNavActive(false);
+
+                    const outer = document.createElement('div');
+                    outer.className = 'tut-illustration-wrap';
+
+                    const wrap = document.createElement('div');
+                    wrap.className = 'tut-tiles-wrap';
+                    for (let i = 0; i < 5; i++) {
+                        const img = document.createElement('img');
+                        img.className            = `tut-tile-row ${i % 2 === 0 ? 'from-left' : 'from-right'}`;
+                        img.src                  = step.tiles;
+                        img.alt                  = '';
+                        img.style.animationDelay = `${(i * 0.65).toFixed(2)}s`;
+                        wrap.appendChild(img);
+                    }
+
+                    if (step.grid) {
+                        const gridImg = document.createElement('img');
+                        gridImg.className = 'tut-grid-overlay';
+                        gridImg.src = step.grid;
+                        gridImg.alt = '';
+                        gridImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:auto;pointer-events:none;opacity:0;transition:opacity 0.4s ease;display:block;';
+                        wrap.appendChild(gridImg);
+                        // last row finishes at 4×0.65 + 1.0 = 3.6s; grid fades in over 0.4s
+                        setTimeout(() => { gridImg.style.opacity = '1'; }, 3600);
+                        setTimeout(() => {
+                            introPlaying = false;
+                            setNavActive(true);
+                        }, 4000);
+                    }
+
+                    outer.appendChild(wrap);
+                    contentEl.appendChild(outer);
+                }
+            }
+        }
+
+        async function render(animate) {
+            restoreNav();
+
+            if (steps.length === 0) {
+                titleEl.hidden = true; contentEl.innerHTML = ''; return;
+            }
+
+            if (!animate) { await applyStep(); return; }
+
+            headerEl.style.animation = '';
+
+            if (steps[currentStep].flipBackFlowers) {
+                // Fade title + lines + text while flowers flip back; then shift background
+                introPlaying = true;
+                setNavActive(false);
+
+                // Header (lines + title) and text all fade out together
+                headerEl.style.transition = 'opacity 0.4s ease';
+                headerEl.style.opacity    = '0';
+                const fadeText = contentEl.querySelector('.tut-text');
+                if (fadeText) {
+                    fadeText.style.transition = 'opacity 0.4s ease';
+                    fadeText.style.opacity    = '0';
+                }
+
+                const inners = Array.from(contentEl.querySelectorAll('.tut-tiles-wrap .flip-card-inner'));
+                inners.forEach((inner, i) => {
+                    void inner.offsetWidth;
+                    inner.style.animation = `tile-flip-back 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
+                });
+
+                const lastFlipMs = inners.length > 0 ? (inners.length - 1) * 500 + 1000 : 0;
+                const waitMs     = lastFlipMs + 150;
+
+                // All 20 tiles and background change simultaneously as the last flip lands
+                setTimeout(() => {
+                    contentEl.querySelectorAll('.tut-tile-cell > img, .flip-card-front img').forEach(img => {
+                        img.src = 'tutorial/page5-tileback.svg';
+                    });
+                    document.documentElement.style.transition      = 'background-color 0.6s ease';
+                    document.body.style.transition                 = 'background-color 0.6s ease';
+                    document.documentElement.style.backgroundColor = '#1b4042';
+                    document.body.style.backgroundColor            = '#1b4042';
+                    setTimeout(() => {
+                        document.documentElement.style.transition = '';
+                        document.body.style.transition            = '';
+                    }, 600);
+                }, lastFlipMs);
+
+                setTimeout(async () => {
+                    headerEl.style.transition = '';
+                    await applyStep(); // sets lines/title src, adds text at opacity 0
+                    const bgSettleMs = (lastFlipMs + 600) - waitMs;
+                    setTimeout(() => {
+                        // Fade in lines + title
+                        headerEl.style.transition = 'opacity 0.4s ease';
+                        void headerEl.offsetWidth;
+                        headerEl.style.opacity = '1';
+                        setTimeout(() => {
+                            headerEl.style.transition = '';
+                            headerEl.style.opacity    = '';
+                        }, 400);
+
+                        // Text fades in after header
+                        const newText = contentEl.querySelector('.tut-text');
+                        if (newText) {
+                            setTimeout(() => { newText.style.opacity = ''; }, 500);
+                        }
+
+                        // Monster tiles flip after text appears
+                        const step = steps[currentStep];
+                        if (step.monsterFlips && step.monster) {
+                            const tileRows = contentEl.querySelectorAll('.tut-tile-row-html');
+                            step.monsterFlips.forEach(({ row, col }, i) => {
+                                const cell = tileRows[row]?.querySelectorAll('.tut-tile-cell')[col];
+                                if (!cell) return;
+                                let inner = cell.querySelector('.flip-card-inner');
+                                if (!inner) {
+                                    // Plain cell — build a flip card in place
+                                    cell.querySelector('img')?.remove();
+                                    const card = document.createElement('div');
+                                    card.className = 'flip-card';
+                                    card.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;background:#1b4042';
+                                    inner = document.createElement('div');
+                                    inner.className = 'flip-card-inner';
+                                    const front = document.createElement('div');
+                                    front.className = 'flip-card-front';
+                                    const fi = document.createElement('img');
+                                    fi.src = 'tutorial/page5-tileback.svg'; fi.alt = '';
+                                    front.appendChild(fi);
+                                    const back = document.createElement('div');
+                                    back.className = 'flip-card-back';
+                                    back.style.backgroundColor = '#1b4042';
+                                    const bi = document.createElement('img');
+                                    bi.src = step.monster; bi.alt = '';
+                                    back.appendChild(bi);
+                                    inner.style.animationDelay = `${(0.9 + i * 0.5).toFixed(2)}s`;
+                                    inner.appendChild(front);
+                                    inner.appendChild(back);
+                                    card.appendChild(inner);
+                                    cell.appendChild(card);
+                                } else {
+                                    // Existing flip card — reset then re-animate
+                                    const backImg = inner.querySelector('.flip-card-back img');
+                                    if (backImg) backImg.src = step.monster;
+                                    inner.style.animation = 'none';
+                                    inner.style.transform  = 'rotateY(0deg)';
+                                    void inner.offsetWidth;
+                                    inner.style.animation = `tile-flip 1.0s ease-in-out ${(0.9 + i * 0.5).toFixed(2)}s both`;
+                                }
+                            });
+                            const lastMonsterMs = 900 + (step.monsterFlips.length - 1) * 500 + 1000 + 150;
+                            setTimeout(() => {
+                                // Collect the flip-card element for each monster tile
+                                const monsterCards = step.monsterFlips.map(({ row, col }) =>
+                                    tileRows[row]?.querySelectorAll('.tut-tile-cell')[col]?.querySelector('.flip-card')
+                                ).filter(Boolean);
+                                // Open up overflow on clipping ancestors so corners aren't cut off
+                                const tilesWrap = contentEl.querySelector('.tut-tiles-wrap');
+                                const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
+                                contentEl.style.overflow  = 'visible';
+                                if (tilesWrap) tilesWrap.style.overflow = 'visible';
+                                if (illusWrap) illusWrap.style.overflow = 'visible';
+                                // Scale up 50% over 1 s
+                                monsterCards.forEach(card => {
+                                    card.style.transition           = 'transform 1s ease';
+                                    card.parentElement.style.zIndex = '10';
+                                    card.style.transform            = 'scale(1.5)';
+                                });
+                                // Hold 1 s, then shrink back over 1 s
+                                setTimeout(() => {
+                                    monsterCards.forEach(card => { card.style.transform = 'scale(1)'; });
+                                    setTimeout(() => {
+                                        monsterCards.forEach(card => {
+                                            card.style.transition           = '';
+                                            card.parentElement.style.zIndex = '';
+                                        });
+                                        contentEl.style.overflow  = '';
+                                        if (tilesWrap) tilesWrap.style.overflow = '';
+                                        if (illusWrap) illusWrap.style.overflow = '';
+                                        introPlaying = false;
+                                        setNavActive(true);
+                                    }, 1000);
+                                }, 2000); // 1 s grow + 1 s hold
+                            }, lastMonsterMs);
+                        } else {
+                            setTimeout(() => {
+                                introPlaying = false;
+                                setNavActive(true);
+                            }, 800);
+                        }
+                    }, bgSettleMs);
+                }, waitMs);
+                return;
+            }
+
+            if (navDir === -1 && steps[currentStep + 1]?.flipBackFlowers) {
+                // Reverse from page 5: restore background, flip flowers forward, replay page 4 intro
+                introPlaying = true;
+                setNavActive(false);
+
+                const flowerBackSrc = steps.find(s => s.flowerBack)?.flowerBack;
+
+                // Background fades back to cream
+                document.documentElement.style.transition      = 'background-color 0.6s ease';
+                document.body.style.transition                 = 'background-color 0.6s ease';
+                document.documentElement.style.backgroundColor = '';
+                document.body.style.backgroundColor            = '';
+                setTimeout(() => {
+                    document.documentElement.style.transition = '';
+                    document.body.style.transition            = '';
+                }, 600);
+
+                // All tile images back to flowerback immediately
+                if (flowerBackSrc) {
+                    contentEl.querySelectorAll('.tut-tile-cell > img, .flip-card-front img').forEach(img => {
+                        img.src = flowerBackSrc;
+                    });
+                }
+
+                // Flip all flowers forward (0→180deg) with same stagger
+                const inners = Array.from(contentEl.querySelectorAll('.tut-tiles-wrap .flip-card-inner'));
+                inners.forEach((inner, i) => {
+                    inner.style.animation = 'none';
+                    inner.style.transform = 'rotateY(0deg)';
+                    void inner.offsetWidth;
+                    inner.style.animation = `tile-flip 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
+                });
+
+                const lastFlipMs = inners.length > 0 ? (inners.length - 1) * 500 + 1000 : 0;
+                const waitMs     = lastFlipMs + 150;
+
+                setTimeout(async () => {
+                    await applyStep(); // pins wrap, sets title, adds text at opacity 0
+                    // Fade header back in
+                    headerEl.style.transition = 'opacity 0.3s ease';
+                    void headerEl.offsetWidth;
+                    headerEl.style.opacity    = '1';
+                    setTimeout(() => {
+                        headerEl.style.transition = '';
+                        headerEl.style.opacity    = '';
+                    }, 300);
+                    // Replay page 4's sequenceText + jiggle sequence
+                    const newText = contentEl.querySelector('.tut-text');
+                    if (newText) {
+                        setTimeout(() => {
+                            newText.style.opacity = '';
+                            if (steps[currentStep].jiggleFlowers) {
+                                setTimeout(() => {
+                                    contentEl.querySelectorAll('.tut-tiles-wrap .flip-card').forEach((card, i) => {
+                                        const cell = card.parentElement;
+                                        cell.classList.remove('jiggle');
+                                        void cell.offsetWidth;
+                                        cell.style.animationDelay = (i * 0.2) + 's';
+                                        cell.classList.add('jiggle');
+                                    });
+                                }, 300);
+                            }
+                        }, 400);
+                    }
+                    introPlaying = false;
+                    setNavActive(true);
+                }, waitMs);
+                return;
+            }
+
+            if (steps[currentStep].fromMonsterFlips) {
+                // Monsters flip back, tiles clear, background resets, lines.svg fades in
+                introPlaying = true;
+                setNavActive(false);
+
+                const prevStep = steps[currentStep - 1];
+                const tileRows = contentEl.querySelectorAll('.tut-tile-row-html');
+
+                // Fade out title and text
+                headerEl.style.transition = 'opacity 0.4s ease';
+                headerEl.style.opacity    = '0';
+                const fadeText = contentEl.querySelector('.tut-text');
+                if (fadeText) {
+                    fadeText.style.transition = 'opacity 0.4s ease';
+                    fadeText.style.opacity    = '0';
+                }
+
+                // Flip each monster tile back with same stagger as the original flip
+                const lastFlipMs = prevStep?.monsterFlips?.length > 0
+                    ? (prevStep.monsterFlips.length - 1) * 500 + 1000 : 0;
+                if (prevStep?.monsterFlips) {
+                    prevStep.monsterFlips.forEach(({ row, col }, i) => {
+                        const cell  = tileRows[row]?.querySelectorAll('.tut-tile-cell')[col];
+                        const inner = cell?.querySelector('.flip-card-inner');
+                        if (!inner) return;
+                        void inner.offsetWidth;
+                        inner.style.animation = `tile-flip-back 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
+                    });
+                }
+
+                // When last flip lands: restore flower backs on all cells + fade background to cream
+                setTimeout(() => {
+                    const flowerBackSrc = steps.find(s => s.flowerBack)?.flowerBack;
+                    tileRows.forEach(rowEl => {
+                        rowEl.querySelectorAll('.tut-tile-cell').forEach(cell => {
+                            cell.innerHTML = '';
+                            if (flowerBackSrc) {
+                                const img = document.createElement('img');
+                                img.src = flowerBackSrc;
+                                img.alt = '';
+                                img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+                                cell.appendChild(img);
+                            }
+                        });
+                    });
+                    document.documentElement.style.transition      = 'background-color 0.6s ease';
+                    document.body.style.transition                 = 'background-color 0.6s ease';
+                    document.documentElement.style.backgroundColor = '';
+                    document.body.style.backgroundColor            = '';
+                    setTimeout(() => {
+                        document.documentElement.style.transition = '';
+                        document.body.style.transition            = '';
+                    }, 600);
+                }, lastFlipMs);
+
+                // After background settles, apply step and fade lines.svg header in
+                setTimeout(async () => {
+                    headerEl.style.transition = '';
+                    await applyStep();
+                    headerEl.style.transition = 'opacity 0.4s ease';
+                    void headerEl.offsetWidth;
+                    headerEl.style.opacity    = '1';
+                    setTimeout(() => {
+                        headerEl.style.transition = '';
+                        headerEl.style.opacity    = '';
+                        // Text fades in after header is visible
+                        const newText = contentEl.querySelector('.tut-text');
+                        if (newText) {
+                            setTimeout(() => { newText.style.opacity = ''; }, 150);
+                        }
+                        // Tile flips after text appears
+                        const flipStep     = steps[currentStep];
+                        const flowerBackSrc = steps.find(s => s.flowerBack)?.flowerBack;
+                        if (flipStep.tileFlips) {
+                            const tileRowEls = contentEl.querySelectorAll('.tut-tile-row-html');
+                            flipStep.tileFlips.forEach(({ row, col, src }, i) => {
+                                const cell = tileRowEls[row]?.querySelectorAll('.tut-tile-cell')[col];
+                                if (!cell) return;
+                                cell.innerHTML = '';
+                                const card  = document.createElement('div');
+                                card.className  = 'flip-card';
+                                card.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+                                const inner = document.createElement('div');
+                                inner.className = 'flip-card-inner';
+                                const front = document.createElement('div');
+                                front.className = 'flip-card-front';
+                                const fi = document.createElement('img');
+                                fi.src = flowerBackSrc || ''; fi.alt = '';
+                                front.appendChild(fi);
+                                const back  = document.createElement('div');
+                                back.className  = 'flip-card-back';
+                                const bi = document.createElement('img');
+                                bi.src = src; bi.alt = '';
+                                back.appendChild(bi);
+                                inner.style.animationDelay = `${(1.0 + i * 0.5).toFixed(2)}s`;
+                                inner.appendChild(front);
+                                inner.appendChild(back);
+                                card.appendChild(inner);
+                                cell.appendChild(card);
+                            });
+                            const lastTileMs = 1000 + (flipStep.tileFlips.length - 1) * 500 + 1000 + 150;
+                            setTimeout(() => {
+                                introPlaying = false;
+                                setNavActive(true);
+                            }, lastTileMs);
+                        } else {
+                            setTimeout(() => {
+                                introPlaying = false;
+                                setNavActive(true);
+                            }, 500);
+                        }
+                    }, 400);
+                }, lastFlipMs + 750); // 150ms buffer after last flip + 600ms bg transition
+                return;
+            }
+
+            if (steps[currentStep].fadeUnflipped) {
+                // Title swaps; unflipped tiles fade out; flipped tiles stay
+                introPlaying = true;
+                setNavActive(false);
+
+                // Fade out title
+                titleEl.style.transition = 'opacity 0.3s ease';
+                titleEl.style.opacity    = '0';
+
+                // Fade out every tile cell that doesn't have a flip-card (unflipped tiles)
+                contentEl.querySelectorAll('.tut-tile-cell').forEach(cell => {
+                    if (!cell.querySelector('.flip-card')) {
+                        cell.style.transition = 'opacity 0.4s ease';
+                        cell.style.opacity    = '0';
+                    }
+                });
+
+                // After fades complete: slide flipped tiles to col-0 of their row, swap title
+                setTimeout(async () => {
+                    // Slide each remaining flip-card tile left to align with col 0 of its row
+                    contentEl.querySelectorAll('.tut-tile-row-html').forEach(rowEl => {
+                        const cells = rowEl.querySelectorAll('.tut-tile-cell');
+                        if (!cells.length) return;
+                        const targetLeft = cells[0].getBoundingClientRect().left;
+                        cells.forEach(cell => {
+                            if (!cell.querySelector('.flip-card')) return;
+                            const dx = targetLeft - cell.getBoundingClientRect().left;
+                            if (dx !== 0) {
+                                cell.style.transition = 'transform 0.7s ease';
+                                cell.style.transform  = `translateX(${dx}px)`;
+                            }
+                        });
+                    });
+
+                    titleEl.style.transition = '';
+                    await applyStep(); // updates title src/width; preserves text if keepText
+                    // Fade new title in simultaneously with tile slide
+                    titleEl.style.transition = 'opacity 0.3s ease';
+                    void titleEl.offsetWidth;
+                    titleEl.style.opacity    = '1';
+                    // After slide finishes (0.7s): fade in power labels or re-enable nav
+                    setTimeout(() => {
+                        titleEl.style.transition = '';
+                        titleEl.style.opacity    = '';
+
+                        const step = steps[currentStep];
+                        if (step.powerLabels) {
+                            const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
+                            if (illusWrap) {
+                                const wrapRect = illusWrap.getBoundingClientRect();
+                                const allRows  = contentEl.querySelectorAll('.tut-tile-row-html');
+                                // Compute shared geometry from first label
+                                let sharedLeft = 0, sharedWidth = 0, sharedHeight = 0;
+                                const firstLabel = step.powerLabels[0];
+                                const firstRowEl = allRows[firstLabel.row];
+                                const firstCell  = firstRowEl?.querySelectorAll('.tut-tile-cell')[firstLabel.col];
+                                if (firstCell) {
+                                    const r    = firstCell.getBoundingClientRect();
+                                    const gap  = r.width * 0.1;
+                                    sharedLeft   = r.right - wrapRect.left + gap;
+                                    sharedWidth  = wrapRect.width - sharedLeft - gap;
+                                    sharedHeight = r.height;
+                                }
+                                // Box height = sharedWidth / widest-SVG-aspect-ratio
+                                // so every SVG is height-constrained and renders at the same scale
+                                const maxAspect  = Math.max(...step.powerLabels.map(p => p.svgW / p.svgH));
+                                const labelBoxH  = sharedWidth / maxAspect;
+                                step.powerLabels.forEach(({ row, col, src }) => {
+                                    const rowEl = allRows[row];
+                                    if (!rowEl) return;
+                                    const cell = rowEl.querySelectorAll('.tut-tile-cell')[col];
+                                    if (!cell) return;
+                                    const cellRect = cell.getBoundingClientRect();
+                                    const top = cellRect.top - wrapRect.top + (sharedHeight - labelBoxH) / 2;
+                                    const img = document.createElement('img');
+                                    img.src = src;
+                                    img.className = 'tut-power-label';
+                                    img.style.cssText = `position:absolute;left:${sharedLeft}px;top:${top}px;width:${sharedWidth}px;height:${labelBoxH}px;opacity:0;transition:opacity 0.4s ease;object-fit:contain;object-position:left center`;
+                                    illusWrap.appendChild(img);
+                                    void img.offsetWidth;
+                                    img.style.opacity = '1';
+                                });
+                            }
+                            // Fade nav out while labels fade in
+                            navEl.style.transition = 'opacity 0.4s ease';
+                            navEl.style.opacity    = '0';
+                            setTimeout(() => {
+                                introPlaying = false;
+                                if (currentStep === steps.length - 1) {
+                                    // Last page — swap nav to play button visual
+                                    navEl.innerHTML = '<img src="tutorial/page7-button.svg" class="tut-play-btn" alt="Play">';
+                                    navEl.style.transition = 'opacity 0.3s ease';
+                                    void navEl.offsetWidth;
+                                    navEl.style.opacity = '1';
+                                } else {
+                                    setNavActive(true);
+                                    navEl.style.transition = '';
+                                    navEl.style.opacity    = '';
+                                }
+                            }, 400);
+                        } else {
+                            introPlaying = false;
+                            setNavActive(true);
+                        }
+                    }, 700);
+                }, 400);
+                return;
+            }
+
+            if (steps[currentStep].keepTiles) {
+                // Tiles persist — fade only header + text; snap grid away instantly
+                headerEl.style.opacity = '0';
+                const fadeText = contentEl.querySelector('.tut-text');
+                const fadeGrid = contentEl.querySelector('.tut-grid-overlay');
+                if (fadeText) fadeText.style.opacity = '0';
+                if (fadeGrid) { fadeGrid.style.transition = 'opacity 0.25s ease'; fadeGrid.style.opacity = '0'; }
+                setTimeout(async () => {
+                    await applyStep();
+                    headerEl.style.opacity = '';
+                    if (steps[currentStep].sequenceText) {
+                        // Title fades in first; text follows after title is visible
+                        const newText = contentEl.querySelector('.tut-text');
+                        if (newText) {
+                            setTimeout(() => {
+                                newText.style.opacity = '';
+                                if (!introPlaying) setNavActive(true);
+                                if (steps[currentStep].jiggleFlowers) {
+                                    // After text transition completes, jiggle each flower tile
+                                    setTimeout(() => {
+                                        const cards = contentEl.querySelectorAll('.tut-tiles-wrap .flip-card');
+                                        cards.forEach((card, i) => {
+                                            const cell = card.parentElement;
+                                            cell.classList.remove('jiggle');
+                                            void cell.offsetWidth; // force reflow to restart animation
+                                            cell.style.animationDelay = (i * 0.2) + 's';
+                                            cell.classList.add('jiggle');
+                                        });
+                                    }, 300);
+                                }
+                            }, 400);
+                        } else {
+                            if (!introPlaying) setNavActive(true);
+                        }
+                    } else {
+                        if (!introPlaying) setNavActive(true);
+                    }
+                }, 280);
+            } else {
+                // Standard transition: fade header and full content together
+                headerEl.style.opacity  = '0';
+                contentEl.style.opacity = '0';
+                setTimeout(async () => {
+                    await applyStep();
+                    headerEl.style.opacity = '';
+                    setTimeout(() => { contentEl.style.opacity = ''; if (!introPlaying) setNavActive(true); }, 250);
+                }, 280);
+            }
+        }
+
+        render(false);
+    </script>
+</body>
+</html>
