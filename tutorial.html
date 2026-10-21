@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#f7e9d5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -37,6 +37,7 @@
             flex-direction: column;
             width: min(90vw, calc(90dvh * 873.41 / 2036.96));
             height: 90dvh;
+            position: relative; /* anchors the "click to continue" hint */
         }
 
         /* ── Header: lines.svg with title overlaid between the two rules ── */
@@ -50,6 +51,8 @@
             width: 100%;
             height: auto;
             display: block;
+            /* Rules hidden by design; the image still sizes the header so titles stay put */
+            visibility: hidden;
         }
 
         /* Title sits centred between the two lines.
@@ -64,6 +67,8 @@
             height: auto;
             display: block;
         }
+        /* .tut-title's display: block would otherwise override the hidden attribute */
+        .tut-title[hidden] { display: none; }
 
         /* ── Content: text pinned to top, any illustration below ── */
         .tut-header,
@@ -233,7 +238,9 @@
         .flip-card {
             position: absolute;
             perspective: 700px;
-            background: #f7e9d5;
+            /* Shows behind the turning face, so it tracks the page background (setTutBg) */
+            background: var(--tut-bg, #f7e9d5);
+            transition: background-color 0.6s ease;
             border-radius: 7.9%;
         }
 
@@ -294,7 +301,7 @@
             animation: tile-jiggle 1.0s ease-in-out both;
         }
 
-        /* ── Footer: tap-to-continue indicator ── */
+        /* ── Footer: holds the final page's play button ── */
         .tut-nav {
             flex-shrink: 0;
             position: relative;
@@ -305,19 +312,43 @@
             justify-content: center;
         }
 
+        /* Sits in the gap between the page's description and its board;
+           placeHint() sets its top each time it appears */
         .tut-tap-hint {
+            position: absolute;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            text-align: center;
+            pointer-events: none;
             font-family: 'Space Mono', monospace;
-            font-size: 1.8cqw;
+            /* Sized off the wrapper width — cqw had no container and fell back to the viewport */
+            /* 11px floor keeps it legible on small or short screens */
+            font-size: max(11px, calc(min(90vw, 90dvh * 873.41 / 2036.96) * 0.04));
             letter-spacing: 0.12em;
             color: #071b1e;
             opacity: 0;
-            transition: opacity 0.4s ease;
-            animation: tap-pulse 2.4s ease-in-out infinite;
+            transition: opacity 0.3s ease; /* fades out instead of snapping when nav locks */
             text-transform: lowercase;
             user-select: none;
         }
 
-        .tut-tap-hint.visible { opacity: 0.4; }
+        /* Pulse only while visible — an always-running animation would override opacity: 0 */
+        .tut-tap-hint.visible {
+            opacity: 0.4;
+            animation: tap-hint-in 0.4s ease both, tap-pulse 2.4s ease-in-out 0.4s infinite;
+        }
+
+        /* Page 2 — the one gold border left after the others fade out */
+        @keyframes tut-border-blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.15; }
+        }
+
+        @keyframes tap-hint-in {
+            from { opacity: 0; }
+            to   { opacity: 0.4; }
+        }
 
         @keyframes tap-pulse {
             0%, 100% { opacity: 0.4; }
@@ -334,6 +365,68 @@
             transition: opacity 0.15s ease;
         }
         .tut-play-btn:hover { opacity: 0.8; }
+        /* Next-move prompt — placeholder until a text SVG is drawn */
+        .tut-prompt {
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            font-size: calc(min(90vw, 90dvh * 873.41 / 2036.96) * 0.05);
+            color: #071b1e;
+            text-transform: lowercase;
+            text-align: center;
+            user-select: none;
+            transition: opacity 0.4s ease;
+        }
+        /* Body text (walk tile description) matching the description SVGs: a DIN-style
+           sans — Barlow is the closest web font — with 37.9-unit caps on the 915.73-unit
+           header → 54.2 units = 5.92% of its width; letter-spacing makes up DIN's width */
+        .tut-prompt.tut-body {
+            font-family: 'Barlow', sans-serif;
+            font-weight: 400;
+            font-size: calc(min(90vw, 90dvh * 873.41 / 2036.96) * 0.0592);
+            letter-spacing: 0.018em;
+            line-height: 1.25;
+            color: #000;
+            width: 87.4%;
+            text-transform: none;
+            text-wrap: balance; /* even line lengths, no one-word last line */
+        }
+        /* Text title placeholder, centred between the header lines like .tut-title */
+        .tut-title-text {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            /* Matches the title SVGs: Space Mono Bold caps, 42.22-unit cap height and
+               ~36.6-unit advance on the 915.73-unit header → 6.53% of its width */
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            font-size: calc(min(90vw, 90dvh * 873.41 / 2036.96) * 0.0653);
+            line-height: 1;
+            margin-top: -0.04em; /* centres the caps like the SVG glyphs, not the line box */
+            text-transform: uppercase;
+            color: #000;
+            white-space: nowrap;
+            user-select: none;
+            transition: opacity 0.4s ease;
+        }
+        .tut-move-target {
+            cursor: pointer;
+        }
+        .tut-move-border {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            pointer-events: none;
+            z-index: 2;
+            /* fades in, then blinks */
+            animation: tut-fade-in 0.3s ease both, tut-border-blink 1.2s ease-in-out 0.3s infinite;
+        }
+        .tut-move-border.leaving {
+            animation: none;
+            transition: opacity 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -349,9 +442,9 @@
                 <!-- step SVG rendered here by JS -->
             </div>
 
-            <div class="tut-nav" id="tut-nav">
-                <div class="tut-tap-hint" id="tut-tap-hint">click to continue</div>
-            </div>
+            <div class="tut-nav" id="tut-nav"></div>
+
+            <div class="tut-tap-hint" id="tut-tap-hint">click to continue</div>
 
         </div>
     </div>
@@ -381,8 +474,13 @@
                 textWidth:  '84.8%',
                 tiles:      'tutorial/page2-tiles.svg',
                 grid:       'tutorial/page2-grid.svg',
+                // Row 2, col 1 — the player clicks it to flip it and reveal flower 1
+                revealBack:   'tutorial/page3-flowerback.svg',
+                revealFlower: 'tutorial/page3-flower1.svg',
+                movePrompt:   'make your first move', // in the hint's spot while the tile blinks
             },
             {
+                noPrev:     true, // page 2 runs straight into this page, so there's nothing to go back to
                 keepTiles:  true,
                 title:      'tutorial/page3-title.svg',
                 titleWidth: '55.3%',
@@ -392,15 +490,44 @@
                 flowers:    ['tutorial/page3-flower1.svg', 'tutorial/page3-flower2.svg', 'tutorial/page3-flower3.svg', 'tutorial/page3-flower4.svg', 'tutorial/page3-flower5.svg'],
             },
             {
-                keepTiles:     true,
-                sequenceText:  true,
-                jiggleFlowers: true,
-                title:         'tutorial/page4-title.svg',
-                titleWidth:    '100%',
-                text:          'tutorial/page4-text.svg',
-                textWidth:     '95.8%',
+                // Flowers 2–5 flip back; player picks a tile next to flower 1
+                keepTiles:   true,
+                nextMove:    true,
+                movePrompt:  'make your next move', // in the hint's spot while the move targets blink
+                walkthrough: 'src/walkthrough.svg',
+                walkColor:   '#5ba24d', // a shade darker than the walk tile's green (#6db360)
+                walkTitle:   'Walk tile',
+                walkText:    'Walk tiles are safe, and you can walk back over them repeatedly as you move through the maze.',
+                // r1c1, r2c2, r3c1, r5c3, r4c4, r5c4 (whichever the player picked is already up)
+                walkTiles:   [
+                    { row: 0, col: 0 }, { row: 1, col: 1 }, { row: 2, col: 0 },
+                    { row: 4, col: 2 }, { row: 3, col: 3 }, { row: 4, col: 3 },
+                ],
             },
             {
+                // Extra walk tiles flip back; player moves on from the tile they picked
+                keepTiles:  true,
+                secondMove: true,
+                movePrompt: 'make your next move', // in the hint's spot while the move targets blink
+                // r1c2, r2c3, r3c2, r4c1, r5c1 — one per row for the showcase layout
+                powerSlots: [
+                    { row: 0, col: 1 }, { row: 1, col: 2 }, { row: 2, col: 1 },
+                    { row: 3, col: 0 }, { row: 4, col: 0 },
+                ],
+                powerTitle:         'tutorial/page6-title.svg',
+                powerTitleWidth:    '47.2%',
+                powerText:          'tutorial/page6-text.svg',
+                showcaseTitle:      'tutorial/page7-title.svg',
+                showcaseTitleWidth: '79.4%',
+            },
+            {
+                // Showcase collapses, other power-ups flip back; move on from the power-up tile
+                keepTiles:  true,
+                thirdMove:  true,
+                movePrompt: 'make your next move', // in the hint's spot while the move targets blink
+            },
+            {
+                noPrev:          true, // reached by dying — no rewinding the move
                 keepTiles:       true,
                 flipBackFlowers: true,
                 sequenceText:    true,
@@ -408,46 +535,32 @@
                 title:           'tutorial/page5-title.svg',
                 text:            'tutorial/page5-text.svg',
                 monster:         'tutorial/page5-monster.svg',
+                hintColor:       '#f7e9d5', // "click to continue" in the description's cream
                 monsterFlips:    [
-                    { row: 0, col: 3 },
-                    { row: 1, col: 1 },
-                    { row: 3, col: 2 },
-                    { row: 4, col: 0 },
+                    // The only cells without a flower, walk tile or power-up
+                    { row: 0, col: 2 },
+                    { row: 1, col: 3 },
+                    { row: 2, col: 2 },
+                    { row: 3, col: 1 },
                 ],
             },
             {
+                // Back to the board: every tile flips to show the whole maze,
+                // then "try today's puzzle"
+                noPrev:           true,
                 fromMonsterFlips: true,
                 keepTiles:        true,
-                sequenceText:     true,
-                title:            'tutorial/page6-title.svg',
-                titleWidth:       '47.2%',
-                text:             'tutorial/page6-text.svg',
-                tileFlips: [
-                    { row: 0, col: 1, src: 'tutorial/page6-potion.svg'  },
-                    { row: 1, col: 0, src: 'tutorial/page6-shears.svg'  },
-                    { row: 2, col: 3, src: 'tutorial/page6-flower.svg'  },
-                    { row: 3, col: 1, src: 'tutorial/page6-warp.svg'    },
-                    { row: 4, col: 2, src: 'tutorial/page6-grapple.svg' },
-                ],
-            },
-            {
-                keepTiles:     true,
-                keepText:      true,
-                fadeUnflipped: true,
-                title:         'tutorial/page7-title.svg',
-                titleWidth:    '79.4%',
-                powerLabels: [
-                    { row: 0, col: 1, src: 'tutorial/page7-potion.svg',  svgW: 486.23, svgH: 96.5 },
-                    { row: 1, col: 0, src: 'tutorial/page7-shears.svg',  svgW: 542.77, svgH: 96.5 },
-                    { row: 2, col: 3, src: 'tutorial/page7-flower.svg',  svgW: 542.39, svgH: 96.5 },
-                    { row: 3, col: 1, src: 'tutorial/page7-portal.svg',  svgW: 479.32, svgH: 96.5 },
-                    { row: 4, col: 2, src: 'tutorial/page7-grapple.svg', svgW: 391.88, svgH: 96.5 },
-                ],
+                finalReveal:      true,
+                textTitle:        'The challenge', // text title, styled like the title SVGs
+                bodyText:         'Complete the maze in as few attempts possible, while using the least number of tiles possible!',
+                textWidth:        '96%', // a little wider than usual so it fits in three lines
+                playButton:       'tutorial/page7-button.svg',
             },
         ];
 
         let currentStep  = 0;
         let introPlaying = false;
+        let walkBgOn     = false; // background currently walk-tile green
         let navDir       = 1; // 1 = forward, -1 = backward
 
         const headerEl  = document.getElementById('tut-header');
@@ -457,38 +570,508 @@
 
         function restoreNav() {
             if (!document.getElementById('tut-tap-hint')) {
-                navEl.innerHTML = '<div class="tut-tap-hint" id="tut-tap-hint">click to continue</div>';
+                navEl.insertAdjacentHTML('afterend', '<div class="tut-tap-hint" id="tut-tap-hint">click to continue</div>');
             }
+        }
+
+        // Centre the hint in the gap between the page's description (or the header,
+        // if there's none) and the top of its board
+        function placeHint(el) {
+            if (!el.offsetParent) return; // overlay hidden
+            const originTop = el.offsetParent.getBoundingClientRect().top;
+            const texts     = contentEl.querySelectorAll('.tut-text, .tut-prompt');
+            const above     = (texts[texts.length - 1] || headerEl).getBoundingClientRect().bottom;
+            const board     = contentEl.querySelector('.tut-tiles-wrap, .tut-illustration');
+            const below     = board ? board.getBoundingClientRect().top : above;
+            el.style.top  = ((above + below) / 2 - originTop) + 'px';
         }
 
         function setNavActive(active) {
             const el = document.getElementById('tut-tap-hint');
-            if (el) el.classList.toggle('visible', active);
+            if (!el) return;
+            // Never while a page is still animating — its own timer shows the hint at the end
+            if (active && introPlaying) return;
+            if (active) {
+                placeHint(el);
+                el.style.color = steps[currentStep]?.hintColor || ''; // e.g. cream on the dark page
+            }
+            el.classList.toggle('visible', active);
         }
+
+        // Window resize / device rotation: redo everything laid out in pixels
+        window.addEventListener('resize', () => {
+            if (!contentEl.clientWidth) return; // tutorial not showing
+            const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
+            if (illusWrap?.dataset.pinK) illusWrap.style.top = (illusWrap.dataset.pinK * contentEl.clientWidth) + 'px';
+            if (contentEl.querySelector('.tut-power-label')) { hideShowcase(false); showShowcase(false); }
+            document.querySelectorAll('.tut-tap-hint.visible').forEach(el => placeHint(el));
+        });
 
         document.querySelector('.tut-container').addEventListener('click', e => {
             if (introPlaying) return;
             if (currentStep === steps.length - 1) { window.location.href = 'index.html'; return; }
+            // Only navigate while "click to continue" shows — stops a double click from
+            // skipping a page mid-transition, before the next page has locked nav
+            if (!document.getElementById('tut-tap-hint')?.classList.contains('visible')) return;
             if (e.clientX < window.innerWidth * 0.25) {
-                if (currentStep > 0 && !steps[currentStep].noPrev) { navDir = -1; currentStep--; render(true); }
+                if (currentStep > 0 && !steps[currentStep].noPrev) { setNavActive(false); navDir = -1; currentStep--; render(true); }
             } else {
-                navDir = 1; currentStep++; render(true);
+                setNavActive(false); navDir = 1; currentStep++; render(true);
             }
         });
 
-        async function fetchSVG(url) {
+        async function fetchSVG(url, prefix) {
             const res  = await fetch(url);
-            const text = await res.text();
-            return new DOMParser().parseFromString(text, 'image/svg+xml').querySelector('svg');
+            let text = await res.text();
+            // An inlined SVG's <style> applies to the whole document, so namespace
+            // Illustrator's generic class names (.st0…) and clip-path ids
+            if (prefix) text = text.replace(/\b(st\d+|clippath(?:-\d+)?)\b/g, prefix + '$1');
+            const svg = new DOMParser().parseFromString(text, 'image/svg+xml').querySelector('svg');
+            if (!res.ok || !svg) throw new Error(`Couldn't load ${url}`);
+            return svg;
+        }
+
+        // Flower tiles in reveal order (0-indexed). Flower 1 is the tile the
+        // player flips on page 2.
+        // Page 3's flowers 2–5: the first flip starts this long after the board
+        // appears (once page 2's text has faded out), then one more every gap (seconds)
+        const FLOWER_FLIP_START = 0.5;
+        const FLOWER_FLIP_GAP   = 0.6;
+
+        // A description only starts fading in once its title has finished (titles fade over 0.4s)
+        const TEXT_AFTER_TITLE_MS = 400;
+
+        const FLOWER_TILES = [
+            { row: 1, col: 0 }, // flower 1
+            { row: 0, col: 3 }, // flower 2
+            { row: 4, col: 1 }, // flower 3
+            { row: 3, col: 2 }, // flower 4
+            { row: 2, col: 3 }, // flower 5
+        ];
+
+        function tileCell(row, col) {
+            return contentEl.querySelectorAll('.tut-tile-row-html')[row]?.querySelectorAll('.tut-tile-cell')[col];
+        }
+
+        function setTutBg(color) {
+            if (color) contentEl.style.setProperty('--tut-bg', color);
+            else       contentEl.style.removeProperty('--tut-bg');
+            [document.documentElement, document.body].forEach(el => {
+                el.style.transition      = 'background-color 0.6s ease';
+                el.style.backgroundColor = color;
+            });
+            setTimeout(() => {
+                document.documentElement.style.transition = '';
+                document.body.style.transition            = '';
+            }, 600);
+        }
+
+        // Flip a plain face-down cell over to `src` (delaySec null = show face-up instantly).
+        // `kind` tags the card so later steps can find and undo it.
+        function flipToTile(cell, src, delaySec, kind = 'walkthrough') {
+            const flowerBackImg = cell.querySelector(':scope > img');
+            if (!flowerBackImg) return;
+            const card = document.createElement('div');
+            card.className           = 'flip-card';
+            card.dataset[kind]       = '1';
+            card.style.cssText       = 'position:absolute;inset:0;width:100%;height:100%';
+            card.innerHTML =
+                `<div class="flip-card-inner" style="${delaySec === null ? 'animation:none;transform:rotateY(180deg)' : `animation:tile-flip 1.0s ease-in-out ${delaySec}s both`}">` +
+                `<div class="flip-card-front"><img src="${flowerBackImg.src}" alt=""></div>` +
+                `<div class="flip-card-back"><img src="${src}" alt=""></div></div>`;
+            flowerBackImg.remove();
+            cell.appendChild(card);
+        }
+
+        // Turn a walk / power-up card back into a plain face-down cell
+        function unflipCard(card) {
+            const cell = card.parentElement;
+            const img  = document.createElement('img');
+            img.src           = card.querySelector('.flip-card-front img')?.src || '';
+            img.alt           = '';
+            img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+            card.remove();
+            cell.appendChild(img);
+        }
+
+        // Swap the title + prompt for the walk tile explanation
+        function showWalkText(step) {
+            step.walkTiles.forEach(({ row, col }) => {
+                const c = tileCell(row, col);
+                if (c) flipToTile(c, step.walkthrough, null); // no-op on cells already face-up
+            });
+            titleEl.hidden = true;
+            headerEl.querySelector('.tut-title-text')?.remove();
+            const t = document.createElement('div');
+            t.className   = 'tut-title-text';
+            t.textContent = step.walkTitle;
+            headerEl.appendChild(t);
+            let p = contentEl.querySelector('.tut-prompt');
+            if (!p) {
+                p = document.createElement('div');
+                p.className = 'tut-prompt';
+                const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
+                illusWrap ? contentEl.insertBefore(p, illusWrap) : contentEl.appendChild(p);
+            }
+            p.classList.add('tut-body');
+            p.textContent = step.walkText;
+            return [t, p];
+        }
+
+        // A move prompt ("make your first move") in the "click to continue" spot, styled
+        // the same. Its own element, so it never unlocks the click-to-continue nav
+        function showMoveHint(text) {
+            hideMoveHint();
+            const el = document.createElement('div');
+            el.className   = 'tut-tap-hint tut-move-hint';
+            el.textContent = text;
+            navEl.after(el);
+            placeHint(el);
+            el.classList.add('visible');
+        }
+
+        function hideMoveHint() {
+            document.querySelectorAll('.tut-move-hint').forEach(el => {
+                el.classList.remove('visible'); // fades out over 0.3s
+                el.classList.remove('tut-move-hint');
+                setTimeout(() => el.remove(), 300);
+            });
+        }
+
+        function clearMoveTargets() {
+            // Borders fade out rather than vanish; .leaving keeps them out of later queries
+            contentEl.querySelectorAll('.tut-move-border:not(.leaving)').forEach(el => {
+                el.style.opacity = getComputedStyle(el).opacity; // hold the blink's current value
+                el.classList.add('leaving');
+                void el.getBoundingClientRect();
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
+            });
+            contentEl.querySelectorAll('.tut-move-target').forEach(cell => cell.classList.remove('tut-move-target'));
+        }
+
+        // Blink a gold border on each face-down tile orthogonally next to `from`.
+        // Nav stays locked until the player clicks one.
+        function showMoveTargets(step, from, onMove, allowed) {
+            const targets = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+                .map(([dr, dc]) => ({ row: from.row + dr, col: from.col + dc }))
+                .filter(t => !allowed || allowed.some(a => a.row === t.row && a.col === t.col))
+                .map(t => ({ ...t, cell: tileCell(t.row, t.col) }))
+                .filter(t => t.cell && !t.cell.querySelector('.flip-card'));
+
+            targets.forEach(({ cell, row, col }) => {
+                cell.classList.add('tut-move-target');
+                // Matches page2-grid.svg's gold border: 7px stroke, rx 12.4 on a 157.74 tile
+                cell.insertAdjacentHTML('beforeend',
+                    '<svg class="tut-move-border" viewBox="0 0 157.74 157.74">' +
+                    '<rect x="1.52" y="1.52" width="154.7" height="154.7" rx="12.4" ry="12.4" ' +
+                    'fill="none" stroke="#f7b52c" stroke-width="7"/></svg>');
+
+                // One handler per cell — a cell can be a target on more than one step
+                if (cell._onMove) cell.removeEventListener('click', cell._onMove);
+                cell._onMove = e => {
+                    if (!cell.classList.contains('tut-move-target')) return; // let later clicks fall through to nav
+                    e.stopPropagation();
+                    clearMoveTargets();
+                    onMove(cell, row, col);
+                };
+                cell.addEventListener('click', cell._onMove);
+            });
+        }
+
+        // First move: the picked tile is a walk tile — background goes green,
+        // walk text shows, and the rest of the walk tiles flip over
+        function revealWalkTiles(step, cell, row, col) {
+            step._moved  = true;
+            step._picked = { row, col };
+            flipToTile(cell, step.walkthrough, 0);
+            hideMoveHint(); // fades out with the flip
+
+            // t=0.5s (tile face turns) — background goes walk-tile green
+            setTimeout(() => {
+                setTutBg(step.walkColor);
+                walkBgOn = true;
+            }, 500);
+
+            // t=1.0s — walk tile title + text fade in
+            setTimeout(() => {
+                const [title, desc] = showWalkText(step);
+                title.style.opacity = desc.style.opacity = '0';
+                void title.offsetWidth;
+                title.style.opacity = '1';
+                setTimeout(() => { desc.style.opacity = '1'; }, TEXT_AFTER_TITLE_MS);
+            }, 1000);
+
+            // t=1.6s — the rest of the walk tiles flip over in order
+            const others = step.walkTiles
+                .map(({ row, col }) => tileCell(row, col))
+                .filter(c => c && c !== cell);
+            others.forEach((c, i) => flipToTile(c, step.walkthrough, (1.6 + i * 0.5).toFixed(2)));
+
+            setTimeout(() => {
+                introPlaying = false;
+                setNavActive(true);
+            }, 1600 + Math.max(others.length - 1, 0) * 500 + 1000 + 150);
+        }
+
+        const POWER_UPS = {
+            flower:  { tile: 'tutorial/page6-flower.svg',  label: 'tutorial/page7-flower.svg',  svgW: 542.39, svgH: 96.5 },
+            potion:  { tile: 'tutorial/page6-potion.svg',  label: 'tutorial/page7-potion.svg',  svgW: 486.23, svgH: 96.5 },
+            shears:  { tile: 'tutorial/page6-shears.svg',  label: 'tutorial/page7-shears.svg',  svgW: 542.77, svgH: 96.5 },
+            warp:    { tile: 'tutorial/page6-warp.svg',    label: 'tutorial/page7-portal.svg',  svgW: 479.32, svgH: 96.5 },
+            grapple: { tile: 'tutorial/page6-grapple.svg', label: 'tutorial/page7-grapple.svg', svgW: 391.88, svgH: 96.5 },
+        };
+
+        function fadeSwapTitle(src, width) {
+            titleEl.style.transition = 'opacity 0.4s ease';
+            titleEl.style.opacity    = '0';
+            setTimeout(() => {
+                titleEl.src         = src;
+                titleEl.style.width = width;
+                titleEl.hidden      = false;
+                void titleEl.offsetWidth;
+                titleEl.style.opacity = '1';
+                setTimeout(() => { titleEl.style.transition = ''; titleEl.style.opacity = ''; }, 400);
+            }, 400);
+        }
+
+        // Power-up showcase: every non-power-up tile fades, power-ups slide to
+        // column 1 of their row, and their descriptions fade in beside them.
+        // Returns how long the animation takes (0 when not animated).
+        function showShowcase(animate) {
+            const cells = Array.from(contentEl.querySelectorAll('.tut-tile-cell'));
+            const isPower = c => !!c.querySelector('.flip-card[data-powerup]');
+            cells.forEach(c => {
+                c.dataset.showcase = '1';
+                if (isPower(c)) return;
+                c.style.transition = animate ? 'opacity 0.4s ease' : '';
+                c.style.opacity    = '0';
+            });
+
+            const slide = () => {
+                cells.filter(isPower).forEach(c => {
+                    const col0 = c.parentElement.querySelector('.tut-tile-cell');
+                    const dx   = col0.getBoundingClientRect().left - c.getBoundingClientRect().left;
+                    c.style.transition = animate ? 'transform 0.7s ease' : '';
+                    c.style.transform  = `translateX(${dx}px)`;
+                });
+            };
+            const labels = () => {
+                const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
+                if (!illusWrap) return;
+                const wrapRect = illusWrap.getBoundingClientRect();
+                const powers   = cells.filter(isPower);
+                if (!powers.length) return;
+                // Shared geometry from column 1 (untransformed), as on the power-up page
+                const r0          = powers[0].parentElement.querySelector('.tut-tile-cell').getBoundingClientRect();
+                const gap         = r0.width * 0.1;
+                const sharedLeft  = r0.right - wrapRect.left + gap;
+                const sharedWidth = wrapRect.width - sharedLeft - gap;
+                const maxAspect   = Math.max(...Object.values(POWER_UPS).map(p => p.svgW / p.svgH));
+                const labelBoxH   = sharedWidth / maxAspect;
+                powers.forEach(c => {
+                    const pu   = POWER_UPS[c.querySelector('.flip-card[data-powerup]').dataset.powerKey];
+                    const r    = c.parentElement.querySelector('.tut-tile-cell').getBoundingClientRect();
+                    const img  = document.createElement('img');
+                    img.src       = pu.label;
+                    img.alt       = '';
+                    img.className = 'tut-power-label';
+                    img.dataset.showcase = '1';
+                    img.style.cssText = `position:absolute;left:${sharedLeft}px;top:${r.top - wrapRect.top + (r.height - labelBoxH) / 2}px;` +
+                                        `width:${sharedWidth}px;height:${labelBoxH}px;object-fit:contain;object-position:left center;` +
+                                        `opacity:${animate ? 0 : 1};transition:opacity 0.4s ease`;
+                    illusWrap.appendChild(img);
+                    if (animate) { void img.offsetWidth; img.style.opacity = '1'; }
+                });
+            };
+
+            if (!animate) { slide(); labels(); return 0; }
+            setTimeout(slide, 400);
+            setTimeout(labels, 1100);
+            return 1500;
+        }
+
+        // Undo the showcase layout. Animated: labels fade, tiles slide back, faded
+        // tiles fade in. Returns how long that takes.
+        function hideShowcase(animate) {
+            const labels = contentEl.querySelectorAll('.tut-power-label[data-showcase]');
+            const cells  = contentEl.querySelectorAll('.tut-tile-cell[data-showcase]');
+            const reset  = c => {
+                c.style.transition = c.style.transform = c.style.opacity = '';
+                delete c.dataset.showcase;
+            };
+            if (!animate) { labels.forEach(l => l.remove()); cells.forEach(reset); return 0; }
+
+            labels.forEach(l => { l.style.opacity = '0'; });
+            setTimeout(() => {
+                labels.forEach(l => l.remove());
+                cells.forEach(c => {
+                    c.style.transition = 'transform 0.7s ease, opacity 0.4s ease 0.5s';
+                    c.style.transform  = '';
+                    c.style.opacity    = '';
+                });
+            }, 400);
+            setTimeout(() => cells.forEach(reset), 1300);
+            return 1300;
+        }
+
+        // Second move: the picked tile is always the out-of-order flower power-up;
+        // the other four land randomly on the remaining slots, then the showcase plays
+        function revealPowerUps(step, cell, row, col) {
+            step._moved = true;
+            hideMoveHint(); // fades out with the flip
+            const keys = ['potion', 'shears', 'warp', 'grapple'].sort(() => Math.random() - 0.5);
+            step._powers = [{ row, col, key: 'flower' }].concat(
+                step.powerSlots
+                    .filter(sl => sl.row !== row || sl.col !== col)
+                    .map((sl, i) => ({ ...sl, key: keys[i] })));
+
+            const flip = (p, delay) => {
+                const c = tileCell(p.row, p.col);
+                if (!c) return;
+                flipToTile(c, POWER_UPS[p.key].tile, delay, 'powerup');
+                const card = c.querySelector('.flip-card[data-powerup]');
+                if (card) card.dataset.powerKey = p.key;
+            };
+            flip(step._powers[0], 0);
+
+            // t=0.5s — "here to help" title + power-up text replace the prompt
+            setTimeout(() => {
+                fadeSwapTitle(step.powerTitle, step.powerTitleWidth); // new title fades in from 0.4s
+                setTimeout(() => {
+                    const img = document.createElement('img');
+                    img.className     = 'tut-text';
+                    img.src           = step.powerText;
+                    img.alt           = '';
+                    img.style.opacity = '0';
+                    contentEl.insertBefore(img, contentEl.querySelector('.tut-illustration-wrap'));
+                    void img.offsetWidth;
+                    img.style.transition = 'opacity 0.4s ease';
+                    img.style.opacity    = '1';
+                }, 400 + TEXT_AFTER_TITLE_MS);
+            }, 500);
+
+            // t=1.2s — the other power-ups flip in order
+            step._powers.slice(1).forEach((p, i) => flip(p, (1.2 + i * 0.5).toFixed(2)));
+            const lastFlipMs = 1200 + (step._powers.length - 2) * 500 + 1000;
+
+            // then the showcase, with the "discover & use tools" title
+            setTimeout(() => {
+                fadeSwapTitle(step.showcaseTitle, step.showcaseTitleWidth);
+                const ms = showShowcase(true);
+                setTimeout(() => {
+                    introPlaying = false;
+                    setNavActive(true);
+                }, ms + 150);
+            }, lastFlipMs + 500);
+        }
+
+        // Third move: the player hits a monster — it flips over, then the existing
+        // death sequence (page 5) plays with this tile among the monsters
+        function triggerDeath(step, cell) {
+            step._moved = true;
+            hideMoveHint(); // fades out with the flip
+            const deathIdx  = steps.findIndex(s => s.flipBackFlowers);
+            const deathStep = steps[deathIdx];
+            flipToTile(cell, deathStep.monster, 0, 'death');
+            const card = cell.querySelector('.flip-card[data-death]');
+            if (card) {
+                card.style.background = '#1b4042';
+                card.querySelector('.flip-card-back').style.backgroundColor = '#1b4042';
+            }
+            // Dying ends the run — no stepping back to the move prompt
+            deathStep.noPrev = true;
+            setTimeout(() => {
+                navDir      = 1;
+                currentStep = deathIdx;
+                render(true);
+            }, 1400);
+        }
+
+        // Last page: flip every tile to show the whole maze, then the play button
+        function finalReveal(step) {
+            const flowerStep = steps.find(s => s.flowers);
+            const walkStep   = steps.find(s => s.nextMove);
+            const powerStep  = steps.find(s => s.secondMove);
+            const deathStep  = steps.find(s => s.flipBackFlowers);
+
+            const faces = new Map();
+            FLOWER_TILES.forEach((t, i) => faces.set(`${t.row}-${t.col}`, { src: flowerStep.flowers[i] }));
+            walkStep.walkTiles.forEach(t => faces.set(`${t.row}-${t.col}`, { src: walkStep.walkthrough }));
+            const powers = powerStep._powers ||
+                powerStep.powerSlots.map((t, i) => ({ ...t, key: ['flower', 'potion', 'shears', 'warp', 'grapple'][i] }));
+            powers.forEach(t => faces.set(`${t.row}-${t.col}`, { src: POWER_UPS[t.key].tile }));
+            deathStep.monsterFlips.forEach(t => faces.set(`${t.row}-${t.col}`, { src: deathStep.monster, dark: true }));
+
+            // Row by row, 0.12s apart
+            let i = 0;
+            contentEl.querySelectorAll('.tut-tile-row-html').forEach((rowEl, row) => {
+                rowEl.querySelectorAll('.tut-tile-cell').forEach((cell, col) => {
+                    const face = faces.get(`${row}-${col}`);
+                    if (!face) return;
+                    flipToTile(cell, face.src, (0.3 + i++ * 0.12).toFixed(2), 'reveal');
+                    if (face.dark) {
+                        const card = cell.querySelector('.flip-card[data-reveal]');
+                        card.style.background = '#1b4042';
+                        card.querySelector('.flip-card-back').style.backgroundColor = '#1b4042';
+                    }
+                });
+            });
+            const lastFlipMs = 300 + Math.max(i - 1, 0) * 120 + 1000;
+
+            // "Try today's puzzle" fades in where "click to continue" was
+            setTimeout(() => {
+                navEl.innerHTML = `<img src="${step.playButton}" class="tut-play-btn" alt="Try today's puzzle" style="opacity:0">`;
+                const btn = navEl.querySelector('.tut-play-btn');
+                // Two frames so the opacity-0 start is painted before the fade begins
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    btn.style.transition = 'opacity 0.4s ease';
+                    btn.style.opacity    = '1';
+                    setTimeout(() => {
+                        btn.style.transition = btn.style.opacity = ''; // back to the CSS hover fade
+                        introPlaying = false;
+                    }, 400);
+                }));
+            }, lastFlipMs + 300);
+        }
+
+        // Warm the image cache so tile faces, titles and text never pop in mid-animation
+        const preloaded = [];
+        function preloadAssets() {
+            const urls = new Set(['tutorial/page5-tileback.svg']);
+            const add  = v => {
+                if (Array.isArray(v)) v.forEach(add);
+                else if (typeof v === 'string' && v.endsWith('.svg')) urls.add(v);
+            };
+            steps.forEach(s => Object.values(s).forEach(add));
+            Object.values(POWER_UPS).forEach(p => { urls.add(p.tile); urls.add(p.label); });
+            urls.forEach(src => { const img = new Image(); img.src = src; preloaded.push(img); });
+        }
+
+        // Revisiting the second-move step from the next page: static showcase
+        function restorePowerShowcase(step) {
+            step._powers.forEach(p => {
+                const c = tileCell(p.row, p.col);
+                if (!c || c.querySelector('.flip-card[data-powerup]')) return;
+                flipToTile(c, POWER_UPS[p.key].tile, null, 'powerup');
+                c.querySelector('.flip-card[data-powerup]').dataset.powerKey = p.key;
+            });
+            titleEl.src         = step.showcaseTitle;
+            titleEl.style.width = step.showcaseTitleWidth;
+            titleEl.hidden      = false;
+            contentEl.querySelector('.tut-prompt')?.remove();
+            const img = document.createElement('img');
+            img.className = 'tut-text';
+            img.src       = step.powerText;
+            img.alt       = '';
+            contentEl.insertBefore(img, contentEl.querySelector('.tut-illustration-wrap'));
+            showShowcase(false);
         }
 
         // Builds the full 5×4 HTML tile grid with all flowers already revealed.
         // Used when navigating backward to page 3 after the DOM was cleared.
         function buildRevealedTileGrid(step) {
-            const flips = [
-                { row: 0, col: 0 }, { row: 1, col: 2 }, { row: 2, col: 0 },
-                { row: 3, col: 3 }, { row: 4, col: 1 },
-            ];
+            const flips = FLOWER_TILES;
             const flipMap = new Map(flips.map((f, i) => [`${f.row}-${f.col}`, i]));
 
             const outer = document.createElement('div');
@@ -547,16 +1130,17 @@
             return outer;
         }
 
-        async function applyStep() {
-            const step     = steps[currentStep];
-            const runIntro = currentStep === 0 && !step._played;
-
-            // Lines SVG (header decoration)
-            const linesEl = headerEl.querySelector('.tut-lines');
-            if (linesEl) linesEl.src = step.lines || 'tutorial/lines.svg';
-
-            // Title
-            if (step.title) {
+        // step.title is an SVG; step.textTitle is plain text styled to match (.tut-title-text)
+        function setStepTitle(step) {
+            headerEl.querySelector('.tut-title-text')?.remove();
+            if (step.textTitle) {
+                titleEl.hidden = true;
+                titleEl.src    = '';
+                const t = document.createElement('div');
+                t.className   = 'tut-title-text';
+                t.textContent = step.textTitle;
+                headerEl.appendChild(t);
+            } else if (step.title) {
                 titleEl.src         = step.title;
                 titleEl.hidden      = false;
                 titleEl.style.width = step.titleWidth || '87.4%';
@@ -564,37 +1148,87 @@
                 titleEl.hidden = true;
                 titleEl.src    = '';
             }
+        }
+
+        // The step's description — its text SVG, or step.bodyText styled to match
+        // (.tut-body) — added above the board at opacity 0 for the caller to fade in
+        function addStepText(step) {
+            let img;
+            if (step.bodyText) {
+                img = document.createElement('div');
+                img.className   = 'tut-prompt tut-body';
+                img.textContent = step.bodyText;
+                if (step.textWidth) img.style.width = step.textWidth;
+            } else {
+                img = document.createElement('img');
+                img.className = 'tut-text';
+                img.src       = step.text;
+                img.alt       = `Tutorial step ${currentStep + 1}`;
+                if (step.textWidth) img.style.width = step.textWidth;
+            }
+            img.style.opacity = '0';
+            const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
+            illusWrap ? contentEl.insertBefore(img, illusWrap) : contentEl.appendChild(img);
+            return img;
+        }
+
+        // opts.deferText: leave the current title + text up; the caller swaps them in later
+        async function applyStep(opts = {}) {
+            const step     = steps[currentStep];
+            const runIntro = currentStep === 0 && !step._played;
+
+            // Lines SVG (header decoration)
+            const linesEl = headerEl.querySelector('.tut-lines');
+            if (linesEl) linesEl.src = step.lines || 'tutorial/lines.svg';
+
+            // Title — unless the caller swaps it in later
+            if (!opts.deferText) setStepTitle(step);
 
             // keepTiles steps: keep the illustration wrap, only swap text + grid overlay
             if (step.keepTiles) {
                 let illusWrap = contentEl.querySelector('.tut-illustration-wrap');
                 // Pin the illustration area to its exact pixel position so text
-                // changes above it can never shift the tiles or grid overlay
+                // changes above it can never shift the tiles or grid overlay. Its top is kept
+                // as a fraction of the content width (everything above it scales with that
+                // width) so the resize handler can rescale it; it still runs to the bottom
                 if (illusWrap) {
                     const top = illusWrap.offsetTop;
-                    const h   = illusWrap.offsetHeight;
+                    illusWrap.dataset.pinK   = top / contentEl.clientWidth;
                     illusWrap.style.position = 'absolute';
                     illusWrap.style.top      = top + 'px';
                     illusWrap.style.left     = '0';
                     illusWrap.style.width    = '100%';
-                    illusWrap.style.height   = h + 'px';
+                    illusWrap.style.bottom   = '0';
                 } else if (step.flowers) {
                     // DOM was cleared by a non-keepTiles step (e.g. navigating back
                     // from page 4). Rebuild the grid with flowers already revealed.
                     illusWrap = buildRevealedTileGrid(step);
                     contentEl.appendChild(illusWrap);
                 }
-                if (!step.keepText) contentEl.querySelector('.tut-text')?.remove();
-                contentEl.querySelector('.tut-grid-overlay')?.remove();
+                if (!step.keepText && !opts.deferText) contentEl.querySelector('.tut-text')?.remove();
+                // Page 3 removes page 2's grid + reveal card itself, once its crossfade covers them
+                if (!step.flowers) {
+                    contentEl.querySelector('.tut-grid-overlay')?.remove();
+                    contentEl.querySelector('.tut-tile-reveal')?.remove();
+                }
+                contentEl.querySelector('.tut-prompt')?.remove();
+                if (!step.textTitle) headerEl.querySelector('.tut-title-text')?.remove(); // setStepTitle just added it
+                clearMoveTargets();
+                hideShowcase(false);
+                // Power-ups only exist from the second move on
+                if (step.nextMove || step.flowers) {
+                    contentEl.querySelectorAll('.flip-card[data-powerup]').forEach(unflipCard);
+                }
+
+                // Walk-tile green only belongs to the next-move step after the move
+                const walkState = !!(step.nextMove && step._moved);
+                if (walkState !== walkBgOn) {
+                    setTutBg(walkState ? step.walkColor : '');
+                    walkBgOn = walkState;
+                }
 
                 if (step.flowers) {
-                    const flips = [
-                        { row: 0, col: 0 }, // flower 1
-                        { row: 1, col: 2 }, // flower 2
-                        { row: 2, col: 0 }, // flower 3
-                        { row: 3, col: 3 }, // flower 4
-                        { row: 4, col: 1 }, // flower 5
-                    ];
+                    const flips = FLOWER_TILES;
                     const flipMap = new Map(flips.map((f, i) => [`${f.row}-${f.col}`, i]));
 
                     const tilesWrap = illusWrap?.querySelector('.tut-tiles-wrap');
@@ -604,6 +1238,10 @@
                             // Replace each SVG img row with an HTML tile row so flip
                             // cards are self-contained cells — no underlying dark tile
                             // to bleed through the flip card edges.
+                            // Page 3's rows are built in a layer over page 2's board and crossfaded
+                            // in, so the small geometry differences between the two never show as a jump
+                            const layer = document.createElement('div');
+                            layer.style.cssText = 'position:absolute;top:0;left:0;width:100%;opacity:0;transition:opacity 0.3s ease;';
                             rows.forEach((rowEl, rowIdx) => {
                                 const newRow = document.createElement('div');
                                 newRow.className = 'tut-tile-row-html';
@@ -620,9 +1258,14 @@
 
                                         const inner = document.createElement('div');
                                         inner.className = 'flip-card-inner';
-                                        // 0.35s bakes in the transition wait so animation
-                                        // starts ~630ms after click, same as before
-                                        inner.style.animationDelay = (0.35 + flipIdx * 0.6) + 's';
+                                        if (flipIdx === 0) {
+                                            // Already revealed on page 2 — show it in place, no re-flip
+                                            inner.style.animation = 'none';
+                                            inner.style.transform = 'rotateY(180deg)';
+                                        } else {
+                                            // Starts once page 2's text has faded out, as page 3's fades in
+                                            inner.style.animationDelay = (FLOWER_FLIP_START + (flipIdx - 1) * FLOWER_FLIP_GAP) + 's';
+                                        }
 
                                         const front = document.createElement('div');
                                         front.className = 'flip-card-front';
@@ -653,18 +1296,38 @@
                                     newRow.appendChild(cell);
                                 }
 
-                                tilesWrap.replaceChild(newRow, rowEl);
+                                layer.appendChild(newRow);
                             });
-                            introPlaying = true;
-                            setNavActive(false);
-                            var lastFlowerMs = 350 + (flips.length - 1) * 600 + 1000 + 150;
+                            tilesWrap.appendChild(layer);
+                            void layer.offsetWidth;
+                            layer.style.opacity = '1';
                             setTimeout(() => {
-                                introPlaying = false;
-                                setNavActive(true);
-                            }, lastFlowerMs);
+                                // Page 2's board is covered now — drop it and put the layer in flow. The rows
+                                // stay inside it: moving them would restart their flip animations
+                                Array.from(tilesWrap.children).forEach(el => { if (el !== layer) el.remove(); });
+                                layer.style.cssText = '';
+                            }, 300);
+                            introPlaying = true; // render() unlocks once page 3's title + text are in
+                            setNavActive(false);
                         } else {
                             // Already HTML rows (e.g. navigating back after a flip-back).
-                            // Snap all revealed cards back to showing flowers.
+                            // Undo the next-move step's walkthrough tile, then snap all
+                            // revealed cards back to showing flowers.
+                            tilesWrap.querySelectorAll('.flip-card[data-walkthrough], .flip-card[data-powerup]').forEach(card => {
+                                const cell = card.parentElement;
+                                const img  = document.createElement('img');
+                                img.src           = step.flowerBack;
+                                img.alt           = '';
+                                img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+                                card.remove();
+                                cell.appendChild(img);
+                            });
+                            const nextMoveStep = steps.find(s => s.nextMove);
+                            if (nextMoveStep) nextMoveStep._moved = false;
+                            const secondMoveStep = steps.find(s => s.secondMove);
+                            if (secondMoveStep) secondMoveStep._moved = false;
+                            const thirdMoveStep = steps.find(s => s.thirdMove);
+                            if (thirdMoveStep) thirdMoveStep._moved = false;
                             tilesWrap.querySelectorAll('.flip-card-inner').forEach(inner => {
                                 inner.style.animation = 'none';
                                 inner.style.transform = 'rotateY(180deg)';
@@ -673,15 +1336,10 @@
                     }
                 }
 
-                if (step.text) {
-                    const img = document.createElement('img');
-                    img.className = 'tut-text';
-                    img.src       = step.text;
-                    img.alt       = `Tutorial step ${currentStep + 1}`;
-                    if (step.textWidth) img.style.width = step.textWidth;
-                    if (step.sequenceText) img.style.opacity = '0';
-                    illusWrap ? contentEl.insertBefore(img, illusWrap) : contentEl.appendChild(img);
-                }
+                if ((step.text || step.bodyText) && !opts.deferText) addStepText(step); // render fades it in
+
+                if (step.nextMove && step._moved) showWalkText(step); // revisiting from the next page
+                if (step.secondMove && step._moved) restorePowerShowcase(step);
                 return;
             }
 
@@ -729,17 +1387,22 @@
 
                     contentEl.appendChild(wrap);
 
+                    // Fetched now so the petals start on time at t=1.5s
+                    const flowerReady = fetchSVG(step.flower).catch(() => null);
+
                     // t=1.5s — flower petals inserted; they animate themselves
                     setTimeout(async () => {
-                        const svgEl = await fetchSVG(step.flower);
-                        svgEl.classList.add('tut-flower-svg');
-                        wrap.insertBefore(svgEl, wrap.querySelector('.tut-illustration-center'));
+                        const svgEl = await flowerReady;
+                        if (svgEl) {
+                            svgEl.classList.add('tut-flower-svg');
+                            wrap.insertBefore(svgEl, wrap.querySelector('.tut-illustration-center'));
+                        }
 
                         // t≈4.45s — last petal (delay 2.45s + duration 0.5s = 2.95s after insert)
                         setTimeout(() => {
                             introPlaying = false;
                             setNavActive(true);
-                        }, 2950);
+                        }, svgEl ? 2950 : 0);
                     }, 1500);
                 }
 
@@ -802,18 +1465,124 @@
                     }
 
                     if (step.grid) {
-                        const gridImg = document.createElement('img');
-                        gridImg.className = 'tut-grid-overlay';
-                        gridImg.src = step.grid;
-                        gridImg.alt = '';
-                        gridImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:auto;pointer-events:none;opacity:0;transition:opacity 0.4s ease;display:block;';
-                        wrap.appendChild(gridImg);
+                        // Inlined (not <img>) so individual gold borders can be faded out
+                        const gridReady = fetchSVG(step.grid, 'tut-grid-').then(gridSvg => {
+                            gridSvg.removeAttribute('id');
+                            gridSvg.classList.add('tut-grid-overlay');
+                            gridSvg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:auto;pointer-events:none;opacity:0;transition:opacity 0.4s ease;display:block;';
+                            wrap.appendChild(gridSvg);
+                            return gridSvg;
+                        });
+                        // No grid means no reveal tile to click — don't leave nav locked
+                        gridReady.catch(() => setTimeout(() => { introPlaying = false; setNavActive(true); }, 3600));
                         // last row finishes at 4×0.65 + 1.0 = 3.6s; grid fades in over 0.4s
-                        setTimeout(() => { gridImg.style.opacity = '1'; }, 3600);
-                        setTimeout(() => {
-                            introPlaying = false;
-                            setNavActive(true);
-                        }, 4000);
+                        setTimeout(() => gridReady.then(g => { g.style.opacity = '1'; }), 3600);
+                        // t=4.4s — fade every gold border except row 2, col 1 (each border is a
+                        // rounded rect plus the clipped inner-glow group just before it), and swap
+                        // that tile for a flip card the player clicks to reveal flower 1
+                        setTimeout(() => gridReady.then(g => {
+                            const TILE = { x: 2.2, y: 181.4, size: 154.7 };
+                            const vb   = g.getAttribute('viewBox').split(' ').map(Number);
+                            let keptGold = [];
+                            g.querySelectorAll('rect.tut-grid-st2').forEach(border => {
+                                const gold = [border, border.previousElementSibling];
+                                if (+border.getAttribute('x') === TILE.x && +border.getAttribute('y') === TILE.y) {
+                                    keptGold = gold;
+                                    // Blink once the others have faded, to draw the eye to this tile
+                                    gold.forEach(el => { el.style.animation = 'tut-border-blink 1.2s ease-in-out 0.8s infinite'; });
+                                    return;
+                                }
+                                gold.forEach(el => {
+                                    el.style.transition = 'opacity 0.8s ease';
+                                    el.style.opacity    = '0';
+                                });
+                            });
+
+                            // Hide the grid's own copy of that tile (fill + flower) so the flip card
+                            // beneath shows through, while its gold border stays drawn on top
+                            Array.from(g.children).forEach(el => {
+                                // Shapes only — skips <defs> plus anything a dev server injects (e.g. a reload <script>)
+                                if (!(el instanceof SVGGraphicsElement) || el.matches('.tut-grid-st2') || el.querySelector('.tut-grid-st3')) return;
+                                const bb = el.getBBox();
+                                if (bb.x >= TILE.x - 1 && bb.y >= TILE.y - 1 &&
+                                    bb.x + bb.width  <= TILE.x + TILE.size + 1 &&
+                                    bb.y + bb.height <= TILE.y + TILE.size + 1) el.style.visibility = 'hidden';
+                            });
+
+                            // Box matching the grid SVG's area, so the card can be placed in SVG units
+                            const box = document.createElement('div');
+                            box.className     = 'tut-tile-reveal';
+                            box.style.cssText = `position:absolute;top:0;left:0;width:100%;aspect-ratio:${vb[2]} / ${vb[3]};`;
+
+                            const card = document.createElement('div');
+                            card.className     = 'flip-card';
+                            // Placed from the row image's geometry, not the grid's (their viewBoxes differ),
+                            // so it exactly covers the dark tile beneath: row 2, col 1 of page2-tiles.svg.
+                            // margin-top % resolves against width, like the rows' own 3.05% gap
+                            card.style.cssText = `left:0;top:0;width:${157.74 / 695.21 * 100}%;aspect-ratio:1;` +
+                                                 `margin-top:calc(${157.74 / 695.21 * 100}% + 3.05%);cursor:pointer;` +
+                                                 // Its right/bottom edges land mid-pixel; this ring hides the dark tile's
+                                                 // anti-aliased fringe that otherwise shows as a thin border once flipped
+                                                 `box-shadow:0 0 0 1px var(--tut-bg, #f7e9d5);`;
+
+                            const inner = document.createElement('div');
+                            inner.className       = 'flip-card-inner';
+                            inner.style.animation = 'none'; // held until clicked
+
+                            const front = document.createElement('div');
+                            front.className = 'flip-card-front';
+                            const frontImg = document.createElement('img');
+                            frontImg.src = step.revealBack;
+                            frontImg.alt = '';
+                            front.appendChild(frontImg);
+
+                            const back = document.createElement('div');
+                            back.className = 'flip-card-back';
+                            const backImg = document.createElement('img');
+                            backImg.src = step.revealFlower;
+                            backImg.alt = '';
+                            back.appendChild(backImg);
+
+                            inner.appendChild(front);
+                            inner.appendChild(back);
+                            card.appendChild(inner);
+                            box.appendChild(card);
+                            wrap.insertBefore(box, g); // under the grid SVG, which ignores pointer events
+
+                            // "make your first move" shows once the border starts blinking
+                            setTimeout(() => {
+                                if (!card.dataset.flipped) showMoveHint(step.movePrompt);
+                            }, 800);
+
+                            // Nav stays locked (hint hidden) until the tile is flipped
+                            card.addEventListener('click', e => {
+                                if (card.dataset.flipped) return; // let later clicks fall through to nav
+                                e.stopPropagation();
+                                card.dataset.flipped = '1';
+                                card.style.cursor    = '';
+                                hideMoveHint(); // fades out with the flip
+                                keptGold.forEach(el => {
+                                    el.style.animation  = 'none';
+                                    el.style.transition = 'opacity 0.4s ease';
+                                    el.style.opacity    = '0';
+                                });
+                                inner.style.animation = 'tile-flip 1.0s ease-in-out both';
+                                // Once it lands, swap the 3D card for a flat face — Chrome can bleed a 1px
+                                // edge of the turned-away front (with its dark outline) past the back face
+                                inner.addEventListener('animationend', () => {
+                                    front.remove();
+                                    inner.style.animation = 'none';
+                                    back.style.transform  = 'none';
+                                }, { once: true });
+                                // Straight on to page 3 once it lands — no click; the other flowers
+                                // flip over as the page 3 text comes in. Nav stays locked throughout
+                                setTimeout(() => {
+                                    navDir = 1;
+                                    currentStep++;
+                                    render(true);
+                                }, 1150);
+                            });
+                        }), 4400);
                     }
 
                     outer.appendChild(wrap);
@@ -824,6 +1593,7 @@
 
         async function render(animate) {
             restoreNav();
+            setNavActive(false); // each page shows it again once its own animation ends
 
             if (steps.length === 0) {
                 titleEl.hidden = true; contentEl.innerHTML = ''; return;
@@ -831,7 +1601,175 @@
 
             if (!animate) { await applyStep(); return; }
 
-            headerEl.style.animation = '';
+            // Page 1's intro leaves the header on a filled fade-in animation; swap it for a
+            // plain opacity first, or the fade-out below would skip straight to 0
+            if (headerEl.style.animation) {
+                headerEl.style.animation = '';
+                headerEl.style.opacity   = '1';
+                void headerEl.offsetWidth;
+            }
+
+            if (steps[currentStep].flowers && navDir === 1) {
+                // Flower 1 has just landed: page 2's title + text fade out, then page 3's
+                // fade in as flowers 2–5 start flipping
+                introPlaying = true;
+                setNavActive(false);
+
+                headerEl.style.transition = 'opacity 0.4s ease';
+                headerEl.style.opacity    = '0';
+                const oldText = contentEl.querySelector('.tut-text');
+                if (oldText) { oldText.style.transition = 'opacity 0.4s ease'; oldText.style.opacity = '0'; }
+
+                const step = steps[currentStep];
+                // Board crossfade (hidden under the fade-out) + flower flips, which start
+                // at FLOWER_FLIP_START — after the 0.4s fade-out
+                await applyStep({ deferText: true });
+                const flipsStartMs = FLOWER_FLIP_START * 1000;
+                const lastFlipMs   = (FLOWER_FLIP_START + (step.flowers.length - 2) * FLOWER_FLIP_GAP + 1.0) * 1000;
+
+                // Page 3's title fades in with flower 2's flip; its text once the title is in
+                setTimeout(() => {
+                    contentEl.querySelector('.tut-text')?.remove();
+                    setStepTitle(step);
+                    const newText = step.text ? addStepText(step) : null;
+                    void headerEl.offsetWidth;
+                    headerEl.style.opacity = '';
+                    setTimeout(() => {
+                        if (newText) { newText.style.transition = 'opacity 0.4s ease'; newText.style.opacity = ''; }
+                    }, TEXT_AFTER_TITLE_MS);
+                }, flipsStartMs);
+
+                // Nav unlocks once flower 5 has landed
+                setTimeout(() => {
+                    headerEl.style.transition = '';
+                    introPlaying = false;
+                    setNavActive(true);
+                }, Math.max(lastFlipMs, flipsStartMs + TEXT_AFTER_TITLE_MS + 400) + 150);
+                return;
+            }
+
+            if (steps[currentStep].nextMove && navDir === 1) {
+                // Page 3 title + text fade out while flowers 2–5 flip face-down in
+                // order; then "make your next move" comes in as the title just as
+                // the tiles next to flower 1 start blinking for the player to pick one
+                introPlaying = true;
+                setNavActive(false);
+
+                titleEl.style.transition = 'opacity 0.4s ease';
+                titleEl.style.opacity    = '0';
+                const fadeText = contentEl.querySelector('.tut-text');
+                if (fadeText) {
+                    fadeText.style.transition = 'opacity 0.4s ease';
+                    fadeText.style.opacity    = '0';
+                }
+
+                const inners = FLOWER_TILES.slice(1)
+                    .map(({ row, col }) => tileCell(row, col)?.querySelector('.flip-card-inner'))
+                    .filter(Boolean);
+                inners.forEach((inner, i) => {
+                    inner.style.animation = 'none';
+                    inner.style.transform = 'rotateY(180deg)';
+                    void inner.offsetWidth;
+                    inner.style.animation = `tile-flip-back 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
+                });
+                const lastFlipMs = inners.length > 0 ? (inners.length - 1) * 500 + 1000 : 0;
+
+                setTimeout(async () => {
+                    const step = steps[currentStep];
+                    await applyStep(); // removes page 3 text; no title on this step
+                    titleEl.style.transition = '';
+                    titleEl.style.opacity    = '';
+                    showMoveHint(step.movePrompt);
+                    showMoveTargets(step, FLOWER_TILES[0], (cell, row, col) => revealWalkTiles(step, cell, row, col));
+                }, Math.max(lastFlipMs, 400) + 150);
+                return;
+            }
+
+            if (steps[currentStep].thirdMove && navDir === 1) {
+                introPlaying = true;
+                setNavActive(false);
+
+                const step      = steps[currentStep];
+                const powerStep = steps.find(s => s.secondMove);
+                step._moved     = false;
+
+                titleEl.style.transition = 'opacity 0.4s ease';
+                titleEl.style.opacity    = '0';
+                const oldText = contentEl.querySelector('.tut-text');
+                if (oldText) { oldText.style.transition = 'opacity 0.4s ease'; oldText.style.opacity = '0'; }
+
+                const collapseMs = hideShowcase(true);
+                const picked     = powerStep._powers[0];
+                const cards      = powerStep._powers.slice(1)
+                    .map(p => tileCell(p.row, p.col)?.querySelector('.flip-card[data-powerup]'))
+                    .filter(Boolean);
+                setTimeout(() => {
+                    cards.forEach((card, i) => {
+                        const inner = card.querySelector('.flip-card-inner');
+                        inner.style.animation = 'none';
+                        inner.style.transform = 'rotateY(180deg)';
+                        void inner.offsetWidth;
+                        inner.style.animation = `tile-flip-back 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
+                    });
+                }, collapseMs);
+                const lastFlipMs = collapseMs + (cards.length > 0 ? (cards.length - 1) * 500 + 1000 : 0);
+
+                setTimeout(async () => {
+                    cards.forEach(unflipCard);
+                    await applyStep(); // no title on this step
+                    titleEl.style.transition = '';
+                    titleEl.style.opacity    = '';
+                    // "make your next move" comes in with the blinking targets, as on pages 4–5.
+                    // Only monster cells — every power-up slot borders one
+                    showMoveHint(step.movePrompt);
+                    showMoveTargets(step, picked, cell => triggerDeath(step, cell),
+                        steps.find(s => s.flipBackFlowers).monsterFlips);
+                }, lastFlipMs + 150);
+                return;
+            }
+
+            if (steps[currentStep].secondMove && navDir === 1) {
+                // Back to creme; every walk tile but the picked one flips face-down;
+                // then prompt a move from the picked tile
+                introPlaying = true;
+                setNavActive(false);
+
+                const step     = steps[currentStep];
+                const moveStep = steps.find(s => s.nextMove);
+                step._moved    = false;
+
+                headerEl.querySelector('.tut-title-text')?.style.setProperty('opacity', '0');
+                const oldText = contentEl.querySelector('.tut-prompt');
+                if (oldText) oldText.style.opacity = '0';
+                setTutBg('');
+                walkBgOn = false;
+
+                const { row: pr, col: pc } = moveStep._picked;
+                const picked   = tileCell(pr, pc);
+                const cards    = moveStep.walkTiles
+                    .map(({ row, col }) => tileCell(row, col))
+                    .filter(c => c && c !== picked)
+                    .map(c => c.querySelector('.flip-card[data-walkthrough]'))
+                    .filter(Boolean);
+                cards.forEach((card, i) => {
+                    const inner = card.querySelector('.flip-card-inner');
+                    inner.style.animation = 'none';
+                    inner.style.transform = 'rotateY(180deg)';
+                    void inner.offsetWidth;
+                    inner.style.animation = `tile-flip-back 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
+                });
+                const lastFlipMs = cards.length > 0 ? (cards.length - 1) * 500 + 1000 : 0;
+
+                setTimeout(async () => {
+                    cards.forEach(unflipCard);
+                    await applyStep(); // no title on this step
+                    // "make your next move" comes in with the blinking targets, as on page 4
+                    showMoveHint(step.movePrompt);
+                    showMoveTargets(step, { row: pr, col: pc },
+                        (cell, row, col) => revealPowerUps(step, cell, row, col));
+                }, Math.max(lastFlipMs, 400) + 150);
+                return;
+            }
 
             if (steps[currentStep].flipBackFlowers) {
                 // Fade title + lines + text while flowers flip back; then shift background
@@ -847,7 +1785,13 @@
                     fadeText.style.opacity    = '0';
                 }
 
-                const inners = Array.from(contentEl.querySelectorAll('.tut-tiles-wrap .flip-card-inner'));
+                const fadePrompt = contentEl.querySelector('.tut-prompt');
+                if (fadePrompt) fadePrompt.style.opacity = '0';
+
+                // Only cards currently face-up (flower 1, walk, power-up) flip back —
+                // the player's death tile stays up
+                const inners = Array.from(contentEl.querySelectorAll('.tut-tiles-wrap .flip-card-inner'))
+                    .filter(inner => new DOMMatrix(getComputedStyle(inner).transform).a < 0 && !inner.closest('.flip-card[data-death]'));
                 inners.forEach((inner, i) => {
                     void inner.offsetWidth;
                     inner.style.animation = `tile-flip-back 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
@@ -865,6 +1809,7 @@
                     document.body.style.transition                 = 'background-color 0.6s ease';
                     document.documentElement.style.backgroundColor = '#1b4042';
                     document.body.style.backgroundColor            = '#1b4042';
+                    contentEl.style.setProperty('--tut-bg', '#1b4042');
                     setTimeout(() => {
                         document.documentElement.style.transition = '';
                         document.body.style.transition            = '';
@@ -898,6 +1843,7 @@
                             step.monsterFlips.forEach(({ row, col }, i) => {
                                 const cell = tileRows[row]?.querySelectorAll('.tut-tile-cell')[col];
                                 if (!cell) return;
+                                if (cell.querySelector('.flip-card[data-death]')) return; // player's death tile is already up
                                 let inner = cell.querySelector('.flip-card-inner');
                                 if (!inner) {
                                     // Plain cell — build a flip card in place
@@ -936,9 +1882,10 @@
                             const lastMonsterMs = 900 + (step.monsterFlips.length - 1) * 500 + 1000 + 150;
                             setTimeout(() => {
                                 // Collect the flip-card element for each monster tile
-                                const monsterCards = step.monsterFlips.map(({ row, col }) =>
+                                const monsterCards = [...new Set(step.monsterFlips.map(({ row, col }) =>
                                     tileRows[row]?.querySelectorAll('.tut-tile-cell')[col]?.querySelector('.flip-card')
-                                ).filter(Boolean);
+                                ).filter(Boolean)
+                                    .concat(Array.from(contentEl.querySelectorAll('.flip-card[data-death]'))))];
                                 // Open up overflow on clipping ancestors so corners aren't cut off
                                 const tilesWrap = contentEl.querySelector('.tut-tiles-wrap');
                                 const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
@@ -978,76 +1925,6 @@
                 return;
             }
 
-            if (navDir === -1 && steps[currentStep + 1]?.flipBackFlowers) {
-                // Reverse from page 5: restore background, flip flowers forward, replay page 4 intro
-                introPlaying = true;
-                setNavActive(false);
-
-                const flowerBackSrc = steps.find(s => s.flowerBack)?.flowerBack;
-
-                // Background fades back to cream
-                document.documentElement.style.transition      = 'background-color 0.6s ease';
-                document.body.style.transition                 = 'background-color 0.6s ease';
-                document.documentElement.style.backgroundColor = '';
-                document.body.style.backgroundColor            = '';
-                setTimeout(() => {
-                    document.documentElement.style.transition = '';
-                    document.body.style.transition            = '';
-                }, 600);
-
-                // All tile images back to flowerback immediately
-                if (flowerBackSrc) {
-                    contentEl.querySelectorAll('.tut-tile-cell > img, .flip-card-front img').forEach(img => {
-                        img.src = flowerBackSrc;
-                    });
-                }
-
-                // Flip all flowers forward (0→180deg) with same stagger
-                const inners = Array.from(contentEl.querySelectorAll('.tut-tiles-wrap .flip-card-inner'));
-                inners.forEach((inner, i) => {
-                    inner.style.animation = 'none';
-                    inner.style.transform = 'rotateY(0deg)';
-                    void inner.offsetWidth;
-                    inner.style.animation = `tile-flip 1.0s ease-in-out ${(i * 0.5).toFixed(2)}s both`;
-                });
-
-                const lastFlipMs = inners.length > 0 ? (inners.length - 1) * 500 + 1000 : 0;
-                const waitMs     = lastFlipMs + 150;
-
-                setTimeout(async () => {
-                    await applyStep(); // pins wrap, sets title, adds text at opacity 0
-                    // Fade header back in
-                    headerEl.style.transition = 'opacity 0.3s ease';
-                    void headerEl.offsetWidth;
-                    headerEl.style.opacity    = '1';
-                    setTimeout(() => {
-                        headerEl.style.transition = '';
-                        headerEl.style.opacity    = '';
-                    }, 300);
-                    // Replay page 4's sequenceText + jiggle sequence
-                    const newText = contentEl.querySelector('.tut-text');
-                    if (newText) {
-                        setTimeout(() => {
-                            newText.style.opacity = '';
-                            if (steps[currentStep].jiggleFlowers) {
-                                setTimeout(() => {
-                                    contentEl.querySelectorAll('.tut-tiles-wrap .flip-card').forEach((card, i) => {
-                                        const cell = card.parentElement;
-                                        cell.classList.remove('jiggle');
-                                        void cell.offsetWidth;
-                                        cell.style.animationDelay = (i * 0.2) + 's';
-                                        cell.classList.add('jiggle');
-                                    });
-                                }, 300);
-                            }
-                        }, 400);
-                    }
-                    introPlaying = false;
-                    setNavActive(true);
-                }, waitMs);
-                return;
-            }
-
             if (steps[currentStep].fromMonsterFlips) {
                 // Monsters flip back, tiles clear, background resets, lines.svg fades in
                 introPlaying = true;
@@ -1068,6 +1945,9 @@
                 // Flip each monster tile back with same stagger as the original flip
                 const lastFlipMs = prevStep?.monsterFlips?.length > 0
                     ? (prevStep.monsterFlips.length - 1) * 500 + 1000 : 0;
+                contentEl.querySelectorAll('.flip-card[data-death] .flip-card-inner').forEach(inner => {
+                    inner.style.animation = 'tile-flip-back 1.0s ease-in-out both';
+                });
                 if (prevStep?.monsterFlips) {
                     prevStep.monsterFlips.forEach(({ row, col }, i) => {
                         const cell  = tileRows[row]?.querySelectorAll('.tut-tile-cell')[col];
@@ -1097,6 +1977,7 @@
                     document.body.style.transition                 = 'background-color 0.6s ease';
                     document.documentElement.style.backgroundColor = '';
                     document.body.style.backgroundColor            = '';
+                    contentEl.style.removeProperty('--tut-bg');
                     setTimeout(() => {
                         document.documentElement.style.transition = '';
                         document.body.style.transition            = '';
@@ -1113,46 +1994,14 @@
                     setTimeout(() => {
                         headerEl.style.transition = '';
                         headerEl.style.opacity    = '';
-                        // Text fades in after header is visible
-                        const newText = contentEl.querySelector('.tut-text');
+                        // Description fades in once the header (title) is fully in
+                        const newText = contentEl.querySelector('.tut-text, .tut-prompt.tut-body');
                         if (newText) {
+                            newText.style.transition = 'opacity 0.4s ease';
                             setTimeout(() => { newText.style.opacity = ''; }, 150);
                         }
-                        // Tile flips after text appears
-                        const flipStep     = steps[currentStep];
-                        const flowerBackSrc = steps.find(s => s.flowerBack)?.flowerBack;
-                        if (flipStep.tileFlips) {
-                            const tileRowEls = contentEl.querySelectorAll('.tut-tile-row-html');
-                            flipStep.tileFlips.forEach(({ row, col, src }, i) => {
-                                const cell = tileRowEls[row]?.querySelectorAll('.tut-tile-cell')[col];
-                                if (!cell) return;
-                                cell.innerHTML = '';
-                                const card  = document.createElement('div');
-                                card.className  = 'flip-card';
-                                card.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
-                                const inner = document.createElement('div');
-                                inner.className = 'flip-card-inner';
-                                const front = document.createElement('div');
-                                front.className = 'flip-card-front';
-                                const fi = document.createElement('img');
-                                fi.src = flowerBackSrc || ''; fi.alt = '';
-                                front.appendChild(fi);
-                                const back  = document.createElement('div');
-                                back.className  = 'flip-card-back';
-                                const bi = document.createElement('img');
-                                bi.src = src; bi.alt = '';
-                                back.appendChild(bi);
-                                inner.style.animationDelay = `${(1.0 + i * 0.5).toFixed(2)}s`;
-                                inner.appendChild(front);
-                                inner.appendChild(back);
-                                card.appendChild(inner);
-                                cell.appendChild(card);
-                            });
-                            const lastTileMs = 1000 + (flipStep.tileFlips.length - 1) * 500 + 1000 + 150;
-                            setTimeout(() => {
-                                introPlaying = false;
-                                setNavActive(true);
-                            }, lastTileMs);
+                        if (steps[currentStep].finalReveal) {
+                            finalReveal(steps[currentStep]);
                         } else {
                             setTimeout(() => {
                                 introPlaying = false;
@@ -1164,153 +2013,31 @@
                 return;
             }
 
-            if (steps[currentStep].fadeUnflipped) {
-                // Title swaps; unflipped tiles fade out; flipped tiles stay
-                introPlaying = true;
-                setNavActive(false);
-
-                // Fade out title
-                titleEl.style.transition = 'opacity 0.3s ease';
-                titleEl.style.opacity    = '0';
-
-                // Fade out every tile cell that doesn't have a flip-card (unflipped tiles)
-                contentEl.querySelectorAll('.tut-tile-cell').forEach(cell => {
-                    if (!cell.querySelector('.flip-card')) {
-                        cell.style.transition = 'opacity 0.4s ease';
-                        cell.style.opacity    = '0';
-                    }
-                });
-
-                // After fades complete: slide flipped tiles to col-0 of their row, swap title
-                setTimeout(async () => {
-                    // Slide each remaining flip-card tile left to align with col 0 of its row
-                    contentEl.querySelectorAll('.tut-tile-row-html').forEach(rowEl => {
-                        const cells = rowEl.querySelectorAll('.tut-tile-cell');
-                        if (!cells.length) return;
-                        const targetLeft = cells[0].getBoundingClientRect().left;
-                        cells.forEach(cell => {
-                            if (!cell.querySelector('.flip-card')) return;
-                            const dx = targetLeft - cell.getBoundingClientRect().left;
-                            if (dx !== 0) {
-                                cell.style.transition = 'transform 0.7s ease';
-                                cell.style.transform  = `translateX(${dx}px)`;
-                            }
-                        });
-                    });
-
-                    titleEl.style.transition = '';
-                    await applyStep(); // updates title src/width; preserves text if keepText
-                    // Fade new title in simultaneously with tile slide
-                    titleEl.style.transition = 'opacity 0.3s ease';
-                    void titleEl.offsetWidth;
-                    titleEl.style.opacity    = '1';
-                    // After slide finishes (0.7s): fade in power labels or re-enable nav
-                    setTimeout(() => {
-                        titleEl.style.transition = '';
-                        titleEl.style.opacity    = '';
-
-                        const step = steps[currentStep];
-                        if (step.powerLabels) {
-                            const illusWrap = contentEl.querySelector('.tut-illustration-wrap');
-                            if (illusWrap) {
-                                const wrapRect = illusWrap.getBoundingClientRect();
-                                const allRows  = contentEl.querySelectorAll('.tut-tile-row-html');
-                                // Compute shared geometry from first label
-                                let sharedLeft = 0, sharedWidth = 0, sharedHeight = 0;
-                                const firstLabel = step.powerLabels[0];
-                                const firstRowEl = allRows[firstLabel.row];
-                                const firstCell  = firstRowEl?.querySelectorAll('.tut-tile-cell')[firstLabel.col];
-                                if (firstCell) {
-                                    const r    = firstCell.getBoundingClientRect();
-                                    const gap  = r.width * 0.1;
-                                    sharedLeft   = r.right - wrapRect.left + gap;
-                                    sharedWidth  = wrapRect.width - sharedLeft - gap;
-                                    sharedHeight = r.height;
-                                }
-                                // Box height = sharedWidth / widest-SVG-aspect-ratio
-                                // so every SVG is height-constrained and renders at the same scale
-                                const maxAspect  = Math.max(...step.powerLabels.map(p => p.svgW / p.svgH));
-                                const labelBoxH  = sharedWidth / maxAspect;
-                                step.powerLabels.forEach(({ row, col, src }) => {
-                                    const rowEl = allRows[row];
-                                    if (!rowEl) return;
-                                    const cell = rowEl.querySelectorAll('.tut-tile-cell')[col];
-                                    if (!cell) return;
-                                    const cellRect = cell.getBoundingClientRect();
-                                    const top = cellRect.top - wrapRect.top + (sharedHeight - labelBoxH) / 2;
-                                    const img = document.createElement('img');
-                                    img.src = src;
-                                    img.className = 'tut-power-label';
-                                    img.style.cssText = `position:absolute;left:${sharedLeft}px;top:${top}px;width:${sharedWidth}px;height:${labelBoxH}px;opacity:0;transition:opacity 0.4s ease;object-fit:contain;object-position:left center`;
-                                    illusWrap.appendChild(img);
-                                    void img.offsetWidth;
-                                    img.style.opacity = '1';
-                                });
-                            }
-                            // Fade nav out while labels fade in
-                            navEl.style.transition = 'opacity 0.4s ease';
-                            navEl.style.opacity    = '0';
-                            setTimeout(() => {
-                                introPlaying = false;
-                                if (currentStep === steps.length - 1) {
-                                    // Last page — swap nav to play button visual
-                                    navEl.innerHTML = '<img src="tutorial/page7-button.svg" class="tut-play-btn" alt="Play">';
-                                    navEl.style.transition = 'opacity 0.3s ease';
-                                    void navEl.offsetWidth;
-                                    navEl.style.opacity = '1';
-                                } else {
-                                    setNavActive(true);
-                                    navEl.style.transition = '';
-                                    navEl.style.opacity    = '';
-                                }
-                            }, 400);
-                        } else {
-                            introPlaying = false;
-                            setNavActive(true);
-                        }
-                    }, 700);
-                }, 400);
-                return;
-            }
-
             if (steps[currentStep].keepTiles) {
-                // Tiles persist — fade only header + text; snap grid away instantly
-                headerEl.style.opacity = '0';
+                // Tiles persist — fade only header + text (page 3 crossfades page 2's board
+                // itself). Going back resets the board in place, so fade it all out instead
+                const fadeAll = navDir === -1;
+                headerEl.style.transition = 'opacity 0.4s ease';
+                headerEl.style.opacity    = '0';
+                if (fadeAll) contentEl.style.opacity = '0';
                 const fadeText = contentEl.querySelector('.tut-text');
-                const fadeGrid = contentEl.querySelector('.tut-grid-overlay');
-                if (fadeText) fadeText.style.opacity = '0';
-                if (fadeGrid) { fadeGrid.style.transition = 'opacity 0.25s ease'; fadeGrid.style.opacity = '0'; }
+                if (fadeText) { fadeText.style.transition = 'opacity 0.4s ease'; fadeText.style.opacity = '0'; }
                 setTimeout(async () => {
                     await applyStep();
                     headerEl.style.opacity = '';
-                    if (steps[currentStep].sequenceText) {
-                        // Title fades in first; text follows after title is visible
-                        const newText = contentEl.querySelector('.tut-text');
-                        if (newText) {
-                            setTimeout(() => {
-                                newText.style.opacity = '';
-                                if (!introPlaying) setNavActive(true);
-                                if (steps[currentStep].jiggleFlowers) {
-                                    // After text transition completes, jiggle each flower tile
-                                    setTimeout(() => {
-                                        const cards = contentEl.querySelectorAll('.tut-tiles-wrap .flip-card');
-                                        cards.forEach((card, i) => {
-                                            const cell = card.parentElement;
-                                            cell.classList.remove('jiggle');
-                                            void cell.offsetWidth; // force reflow to restart animation
-                                            cell.style.animationDelay = (i * 0.2) + 's';
-                                            cell.classList.add('jiggle');
-                                        });
-                                    }, 300);
-                                }
-                            }, 400);
-                        } else {
-                            if (!introPlaying) setNavActive(true);
-                        }
-                    } else {
-                        if (!introPlaying) setNavActive(true);
+                    if (fadeAll) contentEl.style.opacity = '';
+                    setTimeout(() => { headerEl.style.transition = ''; }, 400);
+                    // Description (text image or walk text) follows once the title is in
+                    const newText = contentEl.querySelector('.tut-text, .tut-prompt.tut-body');
+                    if (newText) {
+                        newText.style.transition = 'none';
+                        newText.style.opacity    = '0';
+                        void newText.offsetWidth;
+                        newText.style.transition = 'opacity 0.4s ease';
+                        setTimeout(() => { newText.style.opacity = ''; }, TEXT_AFTER_TITLE_MS);
                     }
-                }, 280);
+                    if (!introPlaying) setNavActive(true);
+                }, 400);
             } else {
                 // Standard transition: fade header and full content together
                 headerEl.style.opacity  = '0';
@@ -1323,6 +2050,93 @@
             }
         }
 
+        // ── Debug: jump-to-page buttons ─────────────────────────────────────
+        // Shown on localhost or with ?debug in the URL. Each page's animation builds
+        // on the previous page's DOM, so a button reloads for a clean slate, then
+        // fast-forwards through the earlier pages (clicking page 2's reveal tile
+        // along the way) and plays the chosen page's own entrance at normal speed.
+        const DEBUG_KEY = 'tut-debug-jump';
+        const debugOn   = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ||
+                       new URLSearchParams(location.search).has('debug');
+
+        function buildDebugBar() {
+            const bar = document.createElement('div');
+            bar.style.cssText = 'position:fixed;top:8px;left:8px;z-index:3000;display:flex;gap:4px;padding:4px;' +
+                                'background:rgba(7,27,30,0.85);border-radius:6px;font:12px/1 "Space Mono",monospace;';
+            const buttons = steps.map((_, i) => {
+                const btn = document.createElement('button');
+                btn.textContent   = i + 1;
+                btn.title         = `Go to tutorial page ${i + 1}`;
+                btn.style.cssText = 'width:26px;height:26px;border:0;border-radius:4px;color:#071b1e;font:inherit;cursor:pointer;';
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    try { sessionStorage.setItem(DEBUG_KEY, String(i)); } catch (err) {}
+                    location.reload();
+                });
+                bar.appendChild(btn);
+                return btn;
+            });
+            // Highlight the page currently showing
+            setInterval(() => {
+                buttons.forEach((btn, i) => { btn.style.background = i === currentStep ? '#f7b52c' : '#f7e9d5'; });
+            }, 250);
+            document.body.appendChild(bar);
+        }
+
+        function fastForwardTo(target) {
+            const SPEED          = 20;
+            const realSetTimeout = window.setTimeout;
+            let ffOn           = true;
+            window.setTimeout = (fn, ms, ...args) => realSetTimeout(fn, (ms || 0) / SPEED, ...args);
+            (function speedUp() {
+                if (!ffOn) return;
+                document.getAnimations().forEach(a => { a.playbackRate = SPEED; });
+                requestAnimationFrame(speedUp);
+            })();
+
+            // A page is done once its animations have re-shown "click to continue"
+            const navIdle = () => !introPlaying && !!document.getElementById('tut-tap-hint')?.classList.contains('visible');
+            const advance = () => { setNavActive(false); navDir = 1; currentStep++; render(true); };
+
+            const normalSpeed = () => {
+                ffOn = false;
+                window.setTimeout = realSetTimeout;
+                document.getAnimations().forEach(a => { a.playbackRate = 1; });
+            };
+
+            (function drive() {
+                const revealCard = document.querySelector('.tut-tile-reveal .flip-card');
+                const moveTarget = document.querySelector('.tut-move-target');
+                // Page 2's flip and page 6's move run straight into the next page, so when
+                // that page is the target, drop to normal speed before the click
+                const leadsToTarget = currentStep === target - 1;
+                if (revealCard && !revealCard.dataset.flipped) {
+                    if (leadsToTarget) { normalSpeed(); revealCard.click(); return; }
+                    revealCard.click(); // page 2 waits for its tile to be flipped
+                } else if (moveTarget) {
+                    if (leadsToTarget && steps[currentStep].thirdMove) { normalSpeed(); moveTarget.click(); return; }
+                    moveTarget.click(); // next-move step waits for a move
+                } else if (navIdle()) {
+                    if (leadsToTarget) {
+                        normalSpeed();
+                        advance(); // the chosen page plays at normal speed
+                        return;
+                    }
+                    advance();
+                }
+                realSetTimeout(drive, 50);
+            })();
+        }
+
+        let debugJump = null;
+        try {
+            debugJump = sessionStorage.getItem(DEBUG_KEY);
+            sessionStorage.removeItem(DEBUG_KEY);
+        } catch (err) {}
+        if (debugOn) buildDebugBar();
+        if (debugJump !== null && +debugJump > 0) fastForwardTo(+debugJump);
+
+        preloadAssets();
         render(false);
     </script>
 </body>
